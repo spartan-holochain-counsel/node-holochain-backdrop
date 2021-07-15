@@ -3,21 +3,17 @@ const path				= require('path');
 const getAvailablePort			= require('get-port');
 
 
-const NetworkType = {
-    QuicBootstrap: 'quic_bootstrap',
-    QuicMdns: 'quic_mdns',
-}
+const NETWORK_QUICBOOTSTRAP		= "quic_bootstrap";
+const NETWORK_QUICMDNS			= "quic_mdns";
 
-const TransportConfigType = {
-    Mem: 'mem',
-    Quic: 'quic',
-    Proxy: 'proxy',
-}
+const TRANSPORT_MEM			= "mem";
+const TRANSPORT_QUIC			= "quic";
+const TRANSPORT_PROXY			= "proxy";
 
-const default_network= {
-    "network_type": NetworkType.QuicBootstrap,
+const DEFAULT_NETWORK_CONFIG		= {
+    "network_type": NETWORK_QUICBOOTSTRAP,
     "transport_pool": [{
-	"type": TransportConfigType.Quic,
+	"type": TRANSPORT_QUIC,
     }],
 }
 
@@ -32,10 +28,18 @@ async function generate ( base_dir ) {
 		"port": await getAvailablePort(),
 	    },
 	}],
-	"network": default_network,
+	"network": DEFAULT_NETWORK_CONFIG,
     });
 }
 
+
 module.exports = {
     generate,
+
+    NETWORK_QUICBOOTSTRAP,
+    NETWORK_QUICMDNS,
+
+    TRANSPORT_MEM,
+    TRANSPORT_QUIC,
+    TRANSPORT_PROXY,
 };

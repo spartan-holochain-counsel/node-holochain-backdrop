@@ -13,31 +13,91 @@ const { normalize_conductor_stderr,
 const { generate }			= require('./config.js');
 
 const DEFAULT_RUST_LOG			= "debug";
-
+const CONDUCTOR_DEFAULTS		= {
+    "cleanup": true,
+};
 
 class Conductor {
-    constructor () {
+    constructor ( options = {} ) {
+	process.once("exit", async () => {
+	    log.debug("Destroying Conductor object because of 'exit' event");
+	    await this.destroy();
+	});
+
+	this.options			= Object.assign({}, CONDUCTOR_DEFAULTS, options );
+	this._cleanup_config		= false;
+	this._destroyed			= false;
+
+	this.configured			= new Promise( (f,r) => {
+	    this._prep_fulfill		= f;
+	    this._prep_reject		= r;
+	});
 	this.spawned			= new Promise( (f,r) => {
 	    this._spawn_fulfill		= f;
 	    this._spawn_reject		= r;
 	});
 
-	this.setup()
+	this._setup()
 	    .catch( (err) => {
 		console.error("Failed during setup", err );
 	    });
     }
 
-    async setup () {
-	let tmpdir			= await mktmpdir();
-	let config			= await generate( tmpdir );
-	let config_file			= path.resolve( tmpdir, "config.yaml" );
+    async _setup () {
+	if ( this.config_file )
+	    throw new Error(`Already setup @ ${this.config_file}`);
 
-	log.info("Writing config file to: %s", config_file );
-	fs.writeFileSync( config_file, YAML.stringify(config), "utf8" );
+	if ( this.options.config ) {
+	    if ( this.options.config.constructor ) {
+		if ( !this.options.config.path )
+		    throw new Error(`You must specify the config path if you use a config constructor`);
+
+		this.config		= this.options.config.constructor();
+		this._cleanup_config	= true;
+	    }
+	    else if ( this.options.config.path ) {
+		let config_file		= this.options.config.path;
+
+		if ( fs.existsSync( config_file ) ) {
+		    let config_yaml	= fs.readFileSync( config_file );
+		    this.config		= YAML.parse( config_yaml );
+		}
+	    }
+
+	    if ( this.options.config.path )
+		this.config_file	= this.options.config.path;
+	}
+
+	let basedir;
+	if ( this.config === undefined ) {
+	    basedir			= await mktmpdir();
+	    this.config			= await generate( basedir );
+
+	    if ( this.config_file === undefined ) {
+		this._cleanup_config	= true;
+		this.config_file	= path.resolve( basedir, "config.yaml" );
+	    }
+	}
+
+	log.info("Writing config file to: %s", this.config_file );
+	fs.writeFileSync(
+	    this.config_file,
+	    YAML.stringify(this.config),
+	    "utf8"
+	);
+
+	this._prep_fulfill( basedir );
+    }
+
+    setup () {
+	return this.configured;
+    }
+
+    async start () {
+	await this.setup();
 
 	log.info("Starting holochain subprocess with debug level: %s", process.env.RUST_LOG || DEFAULT_RUST_LOG );
-	this.subprocess			= spawn( "holochain", [ "-c", config_file ], {
+	this.subprocess			= spawn( "holochain", [ "-c", this.config_file ], {
 	    "env": Object.assign({}, {
 		"RUST_LOG": DEFAULT_RUST_LOG,
 	    }, process.env),
@@ -51,7 +111,7 @@ class Conductor {
 
 	    for ( let line of lines.drain() ) {
 		if ( line.includes("Conductor ready") ) {
-		    self._spawn_fulfill();
+		    self._spawn_fulfill( self.subprocess );
 		    self.subprocess.stdout.off("data", check_for_ready );
 		    self.subprocess.off("close", failed_to_start );
 		}
@@ -97,10 +157,8 @@ class Conductor {
 	this.subprocess.on("exit", (code, signal) => {
 	    log.warn("Conductor exited with: code %s (signal: %s)", code, signal );
 	});
-    }
 
-    ready () {
-	return this.spawned;
+	await this.ready();
     }
 
     stop () {
@@ -118,6 +176,34 @@ class Conductor {
 	    });
 	    this.subprocess.kill();
 	});
+    }
+
+    ready () {
+	return this.spawned;
+    }
+
+    adminPorts () {
+	this._assert_ready();
+
+	return this.config.admin_interfaces.map( iface => iface.driver.port );
+    }
+
+    async destroy () {
+	if ( this._destroyed === true )
+	    return;
+
+	log.normal("Cleaning up automatically generated content");
+	if ( this.options.cleanup !== false ) {
+	    if ( this._cleanup_config === true )
+		fs.unlinkSync( this.config_file );
+	}
+
+	this._destroyed			= true;
+    }
+
+    _assert_ready () {
+	if ( this.config === undefined )
+	    throw new Error(`Not ready`);
     }
 }
 

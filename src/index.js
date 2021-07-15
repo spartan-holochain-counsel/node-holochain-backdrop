@@ -4,10 +4,10 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
 });
 
 const { Conductor }			= require('./conductor.js');
-
-
+const Config				= require('./config.js');
 
 
 module.exports = {
     Conductor,
+    Config,
 };
