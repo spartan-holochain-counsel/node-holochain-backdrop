@@ -1,0 +1,31 @@
+{
+  "name": "@whi/holochain-backdrop",
+  "version": "0.1.0",
+  "description": "A Javascript library for automating the setup of a Holochain development environment",
+  "main": "src/index.js",
+  "files": [
+    "README.md",
+    "src/index.js",
+    "src/conductor.js",
+    "src/config.js",
+    "src/utils.js"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Matthew Brisebois <matthew@webheroes.ca>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mjbrisebois/js-holochain-backdrop/"
+  },
+  "dependencies": {
+    "@whi/stdlog": "^0.3.4",
+    "get-port": "^5.1.1",
+    "yaml": "^1.10.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.0.0"
+  }
+}
