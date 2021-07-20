@@ -5,28 +5,33 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
 
 const fs				= require('fs');
 const expect				= require('chai').expect;
-const { Conductor, Config }		= require('../../src/index.js');
+const { Holochain, Config }		= require('../../src/index.js');
 
 
 function basic_tests () {
-    it("should start and stop conductor", async () => {
-	let conductor			= new Conductor();
+    it("should start and stop holochain", async () => {
+	let holochain			= new Holochain();
+	try {
+	    let base_dir		= await holochain.setup();
 
-	let base_dir			= await conductor.setup();
+	    expect( base_dir		).to.be.a("string");
 
-	expect( base_dir		).to.be.a("string");
+	    await holochain.start();
 
-	await conductor.start();
+	    expect( holochain.adminPorts() ).to.deep.equal([ holochain.config.admin_interfaces[0].driver.port ]);
 
-	expect( conductor.adminPorts()	).to.deep.equal([ conductor.config.admin_interfaces[0].driver.port ]);
+	    let statuses		= await holochain.stop();
 
-	let status			= await conductor.stop();
-
-	expect( status.code		).to.equal( null );
-	expect( status.signal		).to.equal( "SIGTERM" );
+	    expect( statuses[0].signal	).to.equal( "SIGTERM" );
+	    expect( statuses[1].signal	).to.equal( "SIGTERM" );
+	} finally {
+	    await holochain.destroy();
+	}
     });
+}
 
-    it("should start and stop conductor with custom config", async () => {
+function customizing_tests () {
+    it("should start and stop holochain with custom config", async () => {
 	const config_file		= path.resolve( process.cwd(), "tests/config.yaml" );
 	const config			= {
 	    "environment_path": "./databases",
@@ -34,28 +39,29 @@ function basic_tests () {
 	    "admin_interfaces": [{
 		"driver": {
 		    "type": "websocket",
-		    "port": 30512,
+		    "port": 30_512,
 		},
 	    }],
 	    "network": Config.DEFAULT_NETWORK_CONFIG,
 	};
 
-	let conductor			= new Conductor({
+	let holochain			= new Holochain({
 	    "config": {
 		"path": config_file,
 		"constructor": () => config,
 	    },
 	});
 
-	let base_dir			= await conductor.setup();
+	let base_dir			= await holochain.setup();
 
 	expect( base_dir		).to.equal( undefined );
-	expect( conductor.config_file	).to.equal( config_file );
-	expect( conductor.config	).to.deep.equal( config );
+	expect( holochain.config_file	).to.equal( config_file );
+	expect( holochain.config	).to.deep.equal( config );
 
-	await conductor.destroy();
+	await holochain.destroy();
 
-	expect( fs.existsSync( config_file ) ).to.be.false;
+	expect( fs.existsSync( base_dir)	).to.be.false;
+	expect( fs.existsSync( config_file )	).to.be.false;
     });
 }
 
@@ -64,5 +70,6 @@ function basic_tests () {
 describe("Backdrop", () => {
 
     describe("Basic", basic_tests );
+    describe("Customizing", customizing_tests );
 
 });

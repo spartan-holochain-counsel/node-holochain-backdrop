@@ -6,7 +6,7 @@
   "files": [
     "README.md",
     "src/index.js",
-    "src/conductor.js",
+    "src/holochain.js",
     "src/config.js",
     "src/utils.js"
   ],
@@ -20,12 +20,15 @@
     "url": "https://github.com/mjbrisebois/js-holochain-backdrop/"
   },
   "dependencies": {
+    "@whi/promise-timeout": "^0.1.0",
     "@whi/stdlog": "^0.3.4",
+    "@whi/subprocess": "^0.1.0",
     "get-port": "^5.1.1",
     "yaml": "^1.10.2"
   },
   "devDependencies": {
     "chai": "^4.3.4",
-    "mocha": "^9.0.0"
+    "mocha": "^9.0.0",
+    "why-is-node-running": "^2.2.0"
   }
 }

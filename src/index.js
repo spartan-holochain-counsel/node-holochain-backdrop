@@ -3,11 +3,11 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
     level: process.env.LOG_LEVEL || 'fatal',
 });
 
-const { Conductor }			= require('./conductor.js');
+const { Holochain }			= require('./holochain.js');
 const Config				= require('./config.js');
 
 
 module.exports = {
-    Conductor,
+    Holochain,
     Config,
 };

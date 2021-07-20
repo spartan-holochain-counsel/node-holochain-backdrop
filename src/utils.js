@@ -3,11 +3,13 @@ const fs				= require('fs');
 const os				= require('os');
 const path				= require('path');
 
+
 const strip_escape_codes		= /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
 function sanitize_str ( str ) {
     return str.replace(strip_escape_codes, "");
 }
+
 
 function eclipse_right ( str, length ) {
     str					= sanitize_str( str );
@@ -19,6 +21,7 @@ function eclipse_right ( str, length ) {
     else
 	return str.slice( 0, length );
 }
+
 
 function normalize_conductor_stderr ( line ) {
     try {
@@ -57,44 +60,6 @@ function normalize_conductor_stderr ( line ) {
     }
 }
 
-function log_stream ( stream, handler ) {
-    let lines				= new LineParser();
-
-    stream.setEncoding("utf8");
-    stream.on("data", (chunk) => {
-	lines.write( chunk );
-
-	for ( let line of lines.drain() ) {
-	    handler( line );
-	}
-    });
-}
-
-class LineParser {
-    constructor () {
-	this.remnant			= "";
-	this.lines			= [];
-    }
-
-    write ( chunk ) {
-	let lines			= chunk.split("\n");
-
-	lines[0]			= this.remnant + lines[0];
-	this.remnant			= lines.pop();
-
-	for ( let line of lines ) {
-	    this.lines.push( line );
-	}
-    }
-
-    drain () {
-	let new_lines			= this.lines;
-	this.lines			= [];
-
-	return new_lines;
-    }
-}
-
 
 function mktmpdir () {
     let tmpdir				= path.resolve( os.tmpdir(), "conductor-" );
@@ -113,7 +78,5 @@ module.exports = {
     sanitize_str,
     eclipse_right,
     normalize_conductor_stderr,
-    log_stream,
-    LineParser,
     mktmpdir,
 };
