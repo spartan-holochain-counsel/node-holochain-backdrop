@@ -8,7 +8,7 @@ const YAML				= require('yaml');
 const { spawn }				= require('child_process');
 const { SubProcess }			= require('@whi/subprocess');
 
-const { normalize_conductor_stderr,
+const { normalize_rust_log,
 	mktmpdir }			= require('./utils.js');
 const { generate }			= require('./config.js');
 
@@ -110,13 +110,13 @@ class Holochain {
 			"RUST_LOG": DEFAULT_RUST_LOG,
 		    },
 		});
-		log.debug("Started subprocess with PID: %s", this._lair_process.pid );
+		log.debug("Started Lair subprocess with PID: %s", this._lair_process.pid );
 
-		this._lair_process.stdout.on("line", line => {
-		    log.debug("\x1b[2;37m     Lair STDOUT\x1b[0;2m: %s\x1b[0m", line );
+		this._lair_process.stdout( line => {
+		    log.debug("\x1b[2;37m     Lair STDOUT\x1b[0;2m: %s\x1b[0m", normalize_rust_log( line ) );
 		});
 
-		this._lair_process.stderr.on("line", line => {
+		this._lair_process.stderr( line => {
 		    log.silly("\x1b[2;31m     Lair STDERR\x1b[0;2m: %s\x1b[0m", line );
 		});
 
@@ -134,14 +134,14 @@ class Holochain {
 			"RUST_LOG": DEFAULT_RUST_LOG,
 		    },
 		});
-		log.debug("Started subprocess with PID: %s", this._conductor_process.pid );
+		log.debug("Started Conductor subprocess with PID: %s", this._conductor_process.pid );
 
-		this._conductor_process.stdout.on("line", line => {
+		this._conductor_process.stdout( line => {
 		    log.debug("\x1b[2;37mConductor STDOUT\x1b[0;2m: %s\x1b[0m", line );
 		});
 
-		this._conductor_process.stderr.on("line", line => {
-		    log.silly("\x1b[2;31mConductor STDERR\x1b[0;2m: %s\x1b[0m", normalize_conductor_stderr( line ) );
+		this._conductor_process.stderr( line => {
+		    log.silly("\x1b[2;31mConductor STDERR\x1b[0;2m: %s\x1b[0m", normalize_rust_log( line ) );
 		});
 
 		await this._conductor_process.output( line => {
@@ -157,6 +157,7 @@ class Holochain {
     }
 
     async stop () {
+	log.debug("Stopping lair (%s) and conductor (%s)", !!this._lair_process, !!this._conductor_process );
 	return await Promise.all([
 	    this._lair_process
 		? this._lair_process.stop()
@@ -179,7 +180,8 @@ class Holochain {
 	if ( this._destroyed === true )
 	    return;
 
-	await this.stop();
+	let statuses			= await this.stop();
+	log.silly("Exit statuses: Lair => %s && Conductor => %s", statuses[0], statuses[1] );
 
 	if ( this.options.cleanup !== false ) {
 

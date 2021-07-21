@@ -22,7 +22,7 @@
   "dependencies": {
     "@whi/promise-timeout": "^0.1.0",
     "@whi/stdlog": "^0.3.4",
-    "@whi/subprocess": "^0.1.0",
+    "@whi/subprocess": "^0.2.1",
     "get-port": "^5.1.1",
     "yaml": "^1.10.2"
   },

@@ -23,7 +23,7 @@ function eclipse_right ( str, length ) {
 }
 
 
-function normalize_conductor_stderr ( line ) {
+function normalize_rust_log ( line ) {
     try {
 	let date				= line.slice(  4, 23 );
 
@@ -77,6 +77,6 @@ function mktmpdir () {
 module.exports = {
     sanitize_str,
     eclipse_right,
-    normalize_conductor_stderr,
+    normalize_rust_log,
     mktmpdir,
 };
