@@ -1,7 +1,10 @@
+const path				= require('path');
+const log				= require('@whi/stdlog')(path.basename( __filename ), {
+    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
+});
 
 const fs				= require('fs');
 const os				= require('os');
-const path				= require('path');
 
 
 const strip_escape_codes		= /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
@@ -23,18 +26,29 @@ function eclipse_right ( str, length ) {
 }
 
 
-function normalize_rust_log ( line ) {
+function dissect_rust_log ( line ) {
+    let parts				= {
+	"date": new Date(),
+	"level": null,
+	"context": null,
+	"message": line,
+	line,
+    };
+
     try {
-	let date				= line.slice(  4, 23 );
+	let date			= line.slice(  4, 23 );
 
 	try {
-	    let date_string			= (new Date()).getFullYear() + " " + date;
-	    date				= new Date( date_string );
+	    let date_string		= (new Date()).getFullYear() + " " + date;
+	    date			= new Date( date_string );
+	    if ( isNaN( date.getTime() ) )
+		throw new Error(`Invalid date in "${line}"`);
 	} catch (err) {
-	    console.error(err);
+	    // console.error(err);
+	    throw err;
 	}
 
-	let level				= line.slice( 28, 42 );
+	let level			= line.slice( 28, 38 );
 	let msg				= line.slice( 43 );
 
 	let context;
@@ -42,21 +56,27 @@ function normalize_rust_log ( line ) {
 
 	if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1].includes("::") ) {
 	    let group			= sanitize_str( msg_parts[0] ).slice(0, -1);
-	    let location			= eclipse_right( msg_parts[1], Math.max(45 - group.length, 1) );
+	    let location		= eclipse_right( msg_parts[1], Math.max(45 - group.length, 1) );
 
-	    context				= `${location} (${group})`;
+	    context			= `${location} (${group})`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}
 	else {
-	    let location			= msg_parts[0]
+	    let location		= msg_parts[0]
 		.replace(strip_escape_codes, "").slice( -48 );
-	    context				= `${location.padEnd(48)}`
+	    context			= `${location.padEnd(48)}`
 	    msg				= msg_parts.slice(1).join(" ");
 	}
 
-	return `${date.toISOString()} ${level} | \x1b[36;2m${context}\x1b[0m | \x1b[2m${msg}`;
+	parts.date			= date;
+	parts.level			= level.replace(strip_escape_codes, "").trim().toLowerCase();
+	parts.context			= context;
+	parts.message			= msg;
+	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context}\x1b[39m | ${msg}`;
     } catch (err) {
-	return line;
+	// log.silly("Failed to dissect Rust log: %s", line );
+    } finally {
+	return parts;
     }
 }
 
@@ -77,6 +97,6 @@ function mktmpdir () {
 module.exports = {
     sanitize_str,
     eclipse_right,
-    normalize_rust_log,
+    dissect_rust_log,
     mktmpdir,
 };

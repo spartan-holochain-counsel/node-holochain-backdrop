@@ -48,19 +48,19 @@ function customizing_tests () {
 	let holochain			= new Holochain({
 	    "config": {
 		"path": config_file,
-		"constructor": () => config,
+		"construct": () => config,
 	    },
 	});
 
 	let base_dir			= await holochain.setup();
 
-	expect( base_dir		).to.equal( undefined );
+	expect( base_dir		).to.equal( path.dirname( config_file ) );
 	expect( holochain.config_file	).to.equal( config_file );
 	expect( holochain.config	).to.deep.equal( config );
 
 	await holochain.destroy();
 
-	expect( fs.existsSync( base_dir)	).to.be.false;
+	expect( fs.existsSync( base_dir)	).to.be.true;
 	expect( fs.existsSync( config_file )	).to.be.false;
     });
 }

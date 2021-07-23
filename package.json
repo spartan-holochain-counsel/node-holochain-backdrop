@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
   "main": "src/index.js",
+  "bin": {
+    "holochain-backdrop": "./bin/hc-backdrop-cli.js"
+  },
   "files": [
     "README.md",
     "src/index.js",
@@ -23,6 +26,7 @@
     "@whi/promise-timeout": "^0.1.0",
     "@whi/stdlog": "^0.3.4",
     "@whi/subprocess": "^0.2.1",
+    "commander": "^8.0.0",
     "get-port": "^5.1.1",
     "yaml": "^1.10.2"
   },

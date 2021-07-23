@@ -18,14 +18,14 @@ const DEFAULT_NETWORK_CONFIG		= {
 }
 
 
-async function generate ( base_dir ) {
+async function generate ( base_dir, admin_port ) {
     return Object.assign({
 	"environment_path": path.resolve( base_dir, "databases" ),
 	"keystore_path": path.resolve( base_dir, "lair" ),
 	"admin_interfaces": [{
 	    "driver": {
 		"type": "websocket",
-		"port": await getAvailablePort(),
+		"port": admin_port || await getAvailablePort(),
 	    },
 	}],
 	"network": DEFAULT_NETWORK_CONFIG,
@@ -35,6 +35,8 @@ async function generate ( base_dir ) {
 
 module.exports = {
     generate,
+
+    DEFAULT_NETWORK_CONFIG,
 
     NETWORK_QUICBOOTSTRAP,
     NETWORK_QUICMDNS,

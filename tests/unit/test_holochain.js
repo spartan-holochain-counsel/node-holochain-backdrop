@@ -29,7 +29,7 @@ function errors_tests () {
     it("should fail to start because of invalid config option", async () => {
 	let holochain			= new Holochain({
 	    "config": {
-		"constructor": () => null,
+		"construct": () => null,
 	    },
 	});
 
