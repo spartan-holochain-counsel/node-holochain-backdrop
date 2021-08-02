@@ -1,11 +1,10 @@
+#!/usr/bin/env node
 const path				= require('path');
 const logger				= require('@whi/stdlog');
 const log				= logger(path.basename( __filename ), {
     level: process.env.LOG_LEVEL || 'fatal',
 });
 
-
-// const print				= require('@whi/printf');
 const { Command, Option }		= require('commander');
 const { Holochain }			= require('../src/index.js');
 
@@ -38,13 +37,22 @@ const log_levels			= {
     fatal: 0,
     error: 1,
     warn: 2,
-    normal: 3,
+    // normal: 3,
     info: 4,
     debug: 5,
     silly: 6,
 };
+const RUST_LOG_LEVELS			= {
+    0: "error",
+    1: "error",
+    2: "warn",
+    3: "warn",
+    4: "info",
+    5: "debug",
+    6: "trace",
+};
 function should_i_log ( level ) {
-    return verbosity > log_levels[ level ];
+    return verbosity >= log_levels[ level ];
 }
 
 function holochain_log ( prefix, parts ) {
@@ -58,6 +66,7 @@ function holochain_log ( prefix, parts ) {
     }
 
     let lvl				= detect_level( parts.level, "normal" )
+
     if ( should_i_log( lvl ) === false )
 	return;
 
@@ -84,28 +93,29 @@ async function main ( args ) {
 
     program
 	.version("0.1.0")
-	.option("-v, --verbose", "increase logging verbosity", increaseTotal, 2 )
+	.option("-v, --verbose", "increase logging verbosity", increaseTotal, 2 ) // increase starting from 'warn'
 	.option("-q, --quiet", "suppress all printing except for final result", false )
 	.option("-p, --admin-port <port>", "set the admin port that will be saved in Conductor's config", parseInt )
 	.option("-c, --config <path>", "set the config path (it will be generated if file does not exist)" )
 	.hook("preAction", async function ( self, action ) {
 	    const options		= self.opts();
 
-	    verbosity			= options.verbose;
-	    log.transports[0].setLevel(
-		options.verbose === undefined
-		    ? ( options.quiet
-			? 1 // turn off 'warn' level when --quiet is used
-			: 2 // show fatal, error, and warn by default
-		      )
-		    : options.verbose
-	    );
+	    verbosity			= options.verbose === undefined
+		? ( options.quiet
+		    ? 1 // turn off 'warn' level when --quiet is used
+		    : 2 // show fatal, error, and warn by default
+		  )
+		: options.verbose
+
+	    log.transports[0].setLevel( verbosity );
 	})
 	.action(async function ( options ) {
+
 	    async function graceful_shutdown () {
 		print("\nStopping Holochain...");
 		try {
 		    await holochain.stop();
+		    await holochain.destroy();
 		} catch (err) {
 		    log.error("Holochain stop raised an error: %s", err.stack );
 		} finally {
@@ -116,38 +126,44 @@ async function main ( args ) {
 	    process.once("exit", graceful_shutdown );
 	    process.once("SIGINT", graceful_shutdown );
 
+	    let rust_log		= process.env.RUST_LOG || RUST_LOG_LEVELS[verbosity] || "trace";
 	    let holochain		= new Holochain({
 		"admin_port": options.adminPort,
+		"lair_log": rust_log,
+		"conductor_log": rust_log,
 		"config": {
 		    "path": options.config && path.resolve( process.cwd(), options.config ),
 		},
 	    });
+
+	    holochain.on("lair:stdout", (line, parts) => {
+		holochain_log( "\x1b[39;1m     Lair STDOUT:", parts );
+	    });
+
+	    holochain.on("lair:stderr", (line, parts) => {
+		holochain_log( "\x1b[31;1m     Lair STDERR:", parts );
+	    });
+
+	    holochain.on("conductor:stdout", (line, parts) => {
+		holochain_log( "\x1b[39;1mConductor STDOUT:", parts );
+	    });
+
+	    holochain.on("conductor:stderr", (line, parts) => {
+		holochain_log( "\x1b[31;1mConductor STDERR:", parts );
+	    });
+
 	    try {
 		let base_dir		= await holochain.setup();
 
 		print(`Starting Holochain in "${base_dir}"...`);
 		await holochain.start();
 
-		holochain.on("lair:stdout", (line, parts) => {
-		    holochain_log( "\x1b[39;1m     Lair STDOUT:", parts );
-		});
-
-		holochain.on("lair:stderr", (line, parts) => {
-		    holochain_log( "\x1b[31;1m     Lair STDERR:", parts );
-		});
-
-		holochain.on("conductor:stdout", (line, parts) => {
-		    holochain_log( "\x1b[39;1mConductor STDOUT:", parts );
-		});
-
-		holochain.on("conductor:stderr", (line, parts) => {
-		    holochain_log( "\x1b[31;1mConductor STDERR:", parts );
-		});
-
 		await holochain.ready();
 		print(`Holochain is ready`);
 
 		await holochain.close();
+	    } catch (err) {
+		console.error( err );
 	    } finally {
 		print("Running cleanup...");
 		await graceful_shutdown();

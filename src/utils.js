@@ -25,6 +25,18 @@ function eclipse_right ( str, length ) {
 	return str.slice( 0, length );
 }
 
+function eclipse_left ( str, length ) {
+    str					= sanitize_str( str );
+    rlength				= Math.max( length - 1, 1 );
+
+    if ( length === 0 )
+	return "\u2026";
+    if ( str.length > length )
+	return "\u2026" + str.slice( -rlength );
+    else
+	return str.slice( 0, length );
+}
+
 
 function dissect_rust_log ( line ) {
     let parts				= {
@@ -54,25 +66,35 @@ function dissect_rust_log ( line ) {
 	let context;
 	let msg_parts			= msg.split(" ");
 
-	if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1].includes("::") ) {
-	    let group			= sanitize_str( msg_parts[0] ).slice(0, -1);
-	    let location		= eclipse_right( msg_parts[1], Math.max(45 - group.length, 1) );
+	if ( msg_parts[0].includes("wasm_trace") ) {
+	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
+	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
+
+	    context			= `(${group}) ${location}`;
+	    msg				= msg_parts.slice(2).join(" ");
+	}
+	else if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1].includes("::") ) {
+	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
+	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
 
 	    context			= `${location} (${group})`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}
-	else {
-	    let location		= msg_parts[0]
-		.replace(strip_escape_codes, "").slice( -48 );
+	else if ( msg_parts[0].endsWith(":") ) {
+	    let location		= eclipse_left( msg_parts[0], 48 );
 	    context			= `${location.padEnd(48)}`
 	    msg				= msg_parts.slice(1).join(" ");
+	}
+	else {
+	    context			= `?`.padEnd(48);
+	    msg				= msg_parts.join(" ");
 	}
 
 	parts.date			= date;
 	parts.level			= level.replace(strip_escape_codes, "").trim().toLowerCase();
 	parts.context			= context;
 	parts.message			= msg;
-	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context}\x1b[39m | ${msg}`;
+	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context}\x1b[39m | ${eclipse_right(msg, 2000)}`;
     } catch (err) {
 	// log.silly("Failed to dissect Rust log: %s", line );
     } finally {

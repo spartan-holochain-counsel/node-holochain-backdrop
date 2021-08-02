@@ -23,6 +23,8 @@
     "url": "https://github.com/mjbrisebois/js-holochain-backdrop/"
   },
   "dependencies": {
+    "@holochain/conductor-api": "^0.1.1",
+    "@whi/holo-hash": "^0.1.3",
     "@whi/promise-timeout": "^0.1.0",
     "@whi/stdlog": "^0.3.4",
     "@whi/subprocess": "^0.2.1",
