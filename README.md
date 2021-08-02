@@ -17,6 +17,8 @@ DNAs or UI development.  It provides reliable controls for
 -  starting/stopping the Lair/Holochain processes
 -  installing Apps for one or more agents
 
+> **Note:** this module does not include `lair-keystore` and `holochain` binaries.  They are
+> expected to be in your environment.
 
 ### Features
 
@@ -24,6 +26,9 @@ DNAs or UI development.  It provides reliable controls for
 - A CLI tool that provides some of the basic options
 - Reliable start/stop and subprocess management
 - App installation for setting up test scenarios
+
+Tested against Holochain revision
+[`3bd9181ea35c32993d1550591fd19720b31065f6`](https://github.com/holochain/holochain/tree/3bd9181ea35c32993d1550591fd19720b31065f6)
 
 ## Install
 
