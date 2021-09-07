@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@holochain/conductor-api": "^0.1.1",
-    "@whi/holo-hash": "^0.1.3",
-    "@whi/promise-timeout": "^0.1.0",
+    "@whi/holo-hash": "^0.1.5",
+    "@whi/promise-timeout": "^0.1.1",
     "@whi/stdlog": "^0.3.4",
     "@whi/subprocess": "^0.2.1",
     "commander": "^8.0.0",

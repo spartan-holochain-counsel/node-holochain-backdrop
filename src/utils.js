@@ -63,7 +63,7 @@ function dissect_rust_log ( line ) {
 	let level			= line.slice( 28, 38 );
 	let msg				= line.slice( 43 );
 
-	let context;
+	let context			= `?`;
 	let msg_parts			= msg.split(" ");
 
 	if ( msg_parts[0].includes("wasm_trace") ) {
@@ -77,16 +77,16 @@ function dissect_rust_log ( line ) {
 	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
 	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
 
-	    context			= `${location} (${group})`;
+	    if ( group.includes("call_zome") )
+	    context			= `(${group}) ${location}`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}
 	else if ( msg_parts[0].endsWith(":") ) {
 	    let location		= eclipse_left( msg_parts[0], 48 );
-	    context			= `${location.padEnd(48)}`
+	    context			= `${location}`
 	    msg				= msg_parts.slice(1).join(" ");
 	}
 	else {
-	    context			= `?`.padEnd(48);
 	    msg				= msg_parts.join(" ");
 	}
 
@@ -94,7 +94,7 @@ function dissect_rust_log ( line ) {
 	parts.level			= level.replace(strip_escape_codes, "").trim().toLowerCase();
 	parts.context			= context;
 	parts.message			= msg;
-	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context}\x1b[39m | ${eclipse_right(msg, 2000)}`;
+	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | ${eclipse_right(msg, 2000)}`;
     } catch (err) {
 	// log.silly("Failed to dissect Rust log: %s", line );
     } finally {

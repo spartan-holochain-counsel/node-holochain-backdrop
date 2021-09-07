@@ -77,7 +77,7 @@ function holochain_log ( prefix, parts ) {
 	prefix,
 	level_color( lvl ),
 	lvl,
-	parts.context,
+	parts.context.padEnd(48),
 	msg_color( lvl ),
 	parts.message
     );
