@@ -83,12 +83,20 @@ function holochain_log ( prefix, parts ) {
     );
 }
 
+let quiet				= false;
+
 function print ( msg ) {
+    if ( quiet )
+	return;
+
     process.stdout.write(`\x1b[37m${msg}\x1b[0m\n`);
 }
 
 
-async function main ( args ) {
+async function main ( args, callback ) {
+    if ( callback && typeof callback !== "function" )
+	throw new TypeError(`Callback must be a function; not type of '${typeof callback}'`);
+
     const program			= new Command();
 
     program
@@ -100,8 +108,9 @@ async function main ( args ) {
 	.hook("preAction", async function ( self, action ) {
 	    const options		= self.opts();
 
+	    quiet			= options.quiet;
 	    verbosity			= options.verbose === undefined
-		? ( options.quiet
+		? ( quiet
 		    ? 1 // turn off 'warn' level when --quiet is used
 		    : 2 // show fatal, error, and warn by default
 		  )
@@ -128,29 +137,31 @@ async function main ( args ) {
 
 	    let rust_log		= process.env.RUST_LOG || RUST_LOG_LEVELS[verbosity] || "trace";
 	    let holochain		= new Holochain({
-		"admin_port": options.adminPort,
 		"lair_log": rust_log,
 		"conductor_log": rust_log,
 		"config": {
+		    "admin_port": options.adminPort,
 		    "path": options.config && path.resolve( process.cwd(), options.config ),
 		},
 	    });
 
-	    holochain.on("lair:stdout", (line, parts) => {
-		holochain_log( "\x1b[39;1m     Lair STDOUT:", parts );
-	    });
+	    if ( !quiet ) {
+		holochain.on("lair:stdout", (line, parts) => {
+		    holochain_log( "\x1b[39;1m     Lair STDOUT:", parts );
+		});
 
-	    holochain.on("lair:stderr", (line, parts) => {
-		holochain_log( "\x1b[31;1m     Lair STDERR:", parts );
-	    });
+		holochain.on("lair:stderr", (line, parts) => {
+		    holochain_log( "\x1b[31;1m     Lair STDERR:", parts );
+		});
 
-	    holochain.on("conductor:stdout", (line, parts) => {
-		holochain_log( "\x1b[39;1mConductor STDOUT:", parts );
-	    });
+		holochain.on("conductor:stdout", (line, parts) => {
+		    holochain_log( "\x1b[39;1mConductor STDOUT:", parts );
+		});
 
-	    holochain.on("conductor:stderr", (line, parts) => {
-		holochain_log( "\x1b[31;1mConductor STDERR:", parts );
-	    });
+		holochain.on("conductor:stderr", (line, parts) => {
+		    holochain_log( "\x1b[31;1mConductor STDERR:", parts );
+		});
+	    }
 
 	    try {
 		let base_dir		= await holochain.setup();
@@ -161,9 +172,12 @@ async function main ( args ) {
 		await holochain.ready();
 		print(`Holochain is ready`);
 
+		if ( callback )
+		    callback( holochain );
+
 		await holochain.close();
 	    } catch (err) {
-		console.error( err );
+		throw err;
 	    } finally {
 		print("Running cleanup...");
 		await graceful_shutdown();

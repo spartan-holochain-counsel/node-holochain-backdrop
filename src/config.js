@@ -1,5 +1,8 @@
-
 const path				= require('path');
+const log				= require('@whi/stdlog')(path.basename( __filename ), {
+    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
+});
+
 const getAvailablePort			= require('get-port');
 
 
@@ -19,13 +22,16 @@ const DEFAULT_NETWORK_CONFIG		= {
 
 
 async function generate ( base_dir, admin_port ) {
+    const port				= admin_port || await getAvailablePort();
+
+    log.info("Determined admin port to be (given port: %s): %s", admin_port, port );
     return Object.assign({
 	"environment_path": path.resolve( base_dir, "databases" ),
 	"keystore_path": path.resolve( base_dir, "lair" ),
 	"admin_interfaces": [{
 	    "driver": {
 		"type": "websocket",
-		"port": admin_port || await getAvailablePort(),
+		"port": port,
 	    },
 	}],
 	"network": DEFAULT_NETWORK_CONFIG,

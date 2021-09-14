@@ -31,7 +31,8 @@ class Holochain extends EventEmitter {
     constructor ( options = {} ) {
 	super();
 
-	process.once("exit", this._handle_exit.bind(this) );
+	this._exit_handler		= this._handle_exit.bind(this);
+	process.once("exit", this._exit_handler );
 
 	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
 	this.basedir			= null;
@@ -79,11 +80,12 @@ class Holochain extends EventEmitter {
 		let config_file		= this.options.config.path;
 
 		if ( fs.existsSync( config_file ) ) {
-		    if ( this.options.config.admin_port )
-			throw new Error(`Admin port cannot be specified when config is loaded from a file`);
-
 		    let config_yaml	= fs.readFileSync( config_file, "utf8" );
 		    this.config		= YAML.parse( config_yaml );
+
+		    if ( this.options.config.admin_port
+			 && !this.adminPorts().includes( this.options.config.admin_port ) )
+			throw new Error(`The given admin port (${this.options.config.admin_port}) does not match any from the config file: ${this.adminPorts().join(", ")}`);
 		}
 	    }
 
@@ -230,6 +232,7 @@ class Holochain extends EventEmitter {
 	if ( this._destroyed === true )
 	    return;
 
+	process.off("exit", this._exit_handler );
 	this._destroyed			= true;
 
 	let statuses			= await this.stop();

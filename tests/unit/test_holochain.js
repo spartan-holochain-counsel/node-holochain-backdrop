@@ -23,6 +23,24 @@ function basic_tests () {
 	    await holochain.destroy();
 	}
     });
+
+    it("should run holochain with specified admin port", async function () {
+	this.timeout( 20_000 );
+
+	const admin_port		= 29876;
+	let holochain			= new Holochain({
+	    "config": { admin_port },
+	});
+	try {
+	    await holochain.setup();
+
+	    const port			= holochain.adminPorts()[0];
+
+	    expect( port		).to.equal( admin_port );
+	} finally {
+	    await holochain.destroy();
+	}
+    });
 }
 
 function errors_tests () {
