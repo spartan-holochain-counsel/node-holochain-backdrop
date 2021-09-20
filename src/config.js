@@ -28,6 +28,10 @@ async function generate ( base_dir, admin_port ) {
     return Object.assign({
 	"environment_path": path.resolve( base_dir, "databases" ),
 	"keystore_path": path.resolve( base_dir, "lair" ),
+	"passphrase_service": {
+	    "type": "danger_insecure_from_config",
+	    "passphrase": "testing",
+	},
 	"admin_interfaces": [{
 	    "driver": {
 		"type": "websocket",

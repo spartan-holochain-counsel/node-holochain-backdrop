@@ -11,14 +11,14 @@ let
     };
 
     holochainVersionId = "custom";
-    holochainVersion = { # v0.0.102
-      rev = "6535292238dc1fbd2b60433a2054f7787e4f060e"; # Jul 29, 2021
-      sha256 = "1sxpijq1rj4zra9wm5qkds8s2a363n8vbg5m9xfaib0k99fxgqas";
-      cargoSha256 = "03p8vs9qaixqk67447l7q4h3cr0xyqdd1h9alxnx6y5xlz3il0rh";
+    holochainVersion = { # v0.0.103
+      rev = "f3d17d993ad8d988402cc01d73a0095484efbabb"; # Aug 17, 2021
+      sha256 = "1z0y1bl1j2cfv4cgr4k7y0pxnkbiv5c0xv89y8dqnr32vli3bld7";
+      cargoSha256 = "1rf8vg832qyymw0a4x247g0iikk6kswkllfrd5fqdr0qgf9prc31";
 
-      lairKeystoreHashes = { # v0.0.1-alpha.12
-        sha256 = "05p8j1yfvwqg2amnbqaphc6cd92k65dq10v3afdj0k0kj42gd6ic";
-        cargoSha256 = "0bd1sjx4lngi543l0bnchmpz4qb3ysf8gisary1bhxzq47b286cf";
+      lairKeystoreHashes = { # v0.0.3
+        sha256 = "1jiz9y1d4ybh33h1ly24s7knsqyqjagsn1gzqbj1ngl22y5v3aqh";
+        cargoSha256 = "0agykcl7ysikssfwkjgb3hfw6xl0slzy38prc4rnzvagm5wd1jjv";
       };
 
       bins = {
