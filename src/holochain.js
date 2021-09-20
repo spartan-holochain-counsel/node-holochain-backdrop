@@ -289,6 +289,7 @@ class Holochain extends EventEmitter {
 	log.debug("Registering DNAs...");
 	const dna_list			= await Promise.all(
 	    Object.entries( dnas ).map( async ([dna_nick, dna_path]) => {
+		log.debug(" - registering DNA package: %s", dna_path );
 		const dna_hash		= await new HoloHash( await admin.registerDna({
 		    "path": dna_path,
 		}) );

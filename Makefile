@@ -28,7 +28,7 @@ test-integration:	build test-setup
 test-integration-debug:	build test-setup
 	LOG_LEVEL=silly npx mocha ./tests/integration
 test-setup:
-
+	rm -r tests/tmp/
 
 #
 # Repository
