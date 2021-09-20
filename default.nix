@@ -11,10 +11,10 @@ let
     };
 
     holochainVersionId = "custom";
-    holochainVersion = { # v0.0.100
-      rev = "3bd9181ea35c32993d1550591fd19720b31065f6"; # Apr 20, 2021
-      sha256 = "1sbdcxddpa33gqmly4x5gz2l4vhmab8hwjngpibmqfr1ga6v56wv";
-      cargoSha256 = "113swzsyz09vamrh1zi4pwxpj39hyn8g2wr81021ynr9b1ynac28";
+    holochainVersion = { # v0.0.101
+      rev = "ea726cc05aa6064c3b8b4f85fddf3e89429f018e"; # Jul 1, 2021
+      sha256 = "061i7b59pgwf5n4ma6cypg08v50n60z1b2yan3cgwdzmm95na2cm";
+      cargoSha256 = "0fs0va4w3vabbdba6pdwfkfyh271ngri0kpv7amgkljfmszxdw1c";
 
       lairKeystoreHashes = { # v0.0.1-alpha.12
         sha256 = "05p8j1yfvwqg2amnbqaphc6cd92k65dq10v3afdj0k0kj42gd6ic";
