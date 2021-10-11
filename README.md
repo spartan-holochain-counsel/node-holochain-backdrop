@@ -18,7 +18,8 @@ DNAs or UI development.  It provides reliable controls for
 -  installing Apps for one or more agents
 
 > **Note:** this module does not include `lair-keystore` and `holochain` binaries.  They are
-> expected to be in your environment.
+> expected to be in your environment.  [see nix shell
+> configs](https://github.com/mjbrisebois/holochain-nix-shell-configs)
 
 
 ### Holochain Version Map
@@ -41,8 +42,6 @@ DNAs or UI development.  It provides reliable controls for
 - Reliable start/stop and subprocess management
 - App installation for setting up test scenarios
 
-Tested against Holochain revision
-[`3bd9181ea35c32993d1550591fd19720b31065f6`](https://github.com/holochain/holochain/tree/3bd9181ea35c32993d1550591fd19720b31065f6)
 
 ## Install
 
