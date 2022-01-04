@@ -11,8 +11,8 @@ function basic_tests () {
     it("should start and stop conductor", async () => {
 	let config			= await generate( __dirname );
 
-	expect( config.environment_path	).to.have.string( __dirname );
-	expect( config.keystore_path	).to.have.string( __dirname );
+	expect( config.environment_path		).to.have.string( __dirname );
+	expect( config.keystore.keystore_path	).to.have.string( __dirname );
 
 	expect( config.admin_interfaces[0].driver.port	).to.be.a("number");
     });

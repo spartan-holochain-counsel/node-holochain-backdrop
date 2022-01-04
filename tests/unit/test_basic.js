@@ -9,7 +9,7 @@ const { Holochain, Config }		= require('../../src/index.js');
 
 
 function basic_tests () {
-    it("should start and stop holochain", async () => {
+    it("should start and stop holochain", async function () {
 	let holochain			= new Holochain();
 	try {
 	    let base_dir		= await holochain.setup();
@@ -31,11 +31,13 @@ function basic_tests () {
 }
 
 function customizing_tests () {
-    it("should start and stop holochain with custom config", async () => {
+    it("should start and stop holochain with custom config", async function () {
 	const config_file		= path.resolve( process.cwd(), "tests/config.yaml" );
 	const config			= {
 	    "environment_path": "./databases",
-	    "keystore_path": "./lair",
+	    "keystore": {
+		"keystore_path": "./lair",
+	    },
 	    "admin_interfaces": [{
 		"driver": {
 		    "type": "websocket",

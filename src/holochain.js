@@ -6,7 +6,7 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
 const fs				= require('fs');
 const YAML				= require('yaml');
 const EventEmitter			= require('events');
-const { spawn }				= require('child_process');
+const { execSync }			= require('child_process');
 const { SubProcess,
 	TimeoutError }			= require('@whi/subprocess');
 const { HoloHash }			= require('@whi/holo-hash');
@@ -125,12 +125,12 @@ class Holochain extends EventEmitter {
 	    });
 	}
 
-	log.info("Writing config file to: %s", this.config_file );
-	fs.writeFileSync(
-	    this.config_file,
-	    YAML.stringify(this.config),
-	    "utf8"
-	);
+	if ( ! fs.existsSync( this.config.keystore.keystore_path ) ) {
+	    log.info("Creating Lair path: %s", this.config.keystore.keystore_path );
+	    fs.mkdirSync( this.config.keystore.keystore_path, {
+		"recursive": true,
+	    });
+	}
 
 	return this.basedir;
     }
@@ -145,14 +145,35 @@ class Holochain extends EventEmitter {
 
 	await this.setup();
 
+	const lair_config_path		= path.join( this.config.keystore.keystore_path, "lair-keystore-config.yaml" );
+	if ( ! fs.existsSync( lair_config_path ) ) {
+	    log.normal("Initializing lair-keystore because config (%s) did not exist", lair_config_path );
+	    let output			= execSync(`lair-keystore -r ${this.config.keystore.keystore_path} init -p`, {
+		"input": "",
+		"encoding": "utf8",
+	    });
+	}
+
+	const lair_config_yaml		= fs.readFileSync( lair_config_path, "utf8" );
+	const lair_config		= YAML.parse( lair_config_yaml );
+
+	this.config.keystore.connection_url = lair_config.connectionUrl;
+
+	log.info("Writing config file to: %s", this.config_file );
+	fs.writeFileSync(
+	    this.config_file,
+	    YAML.stringify(this.config),
+	    "utf8"
+	);
 
 	log.info("Starting lair-keystore subprocess with debug level: %s", this.options.lair_log );
 	this.lair			= new SubProcess({
-	    "name": "lair-keystore",
-	    "command": [ "lair-keystore", "-d", this.config.keystore_path ],
+	    "name": "Lair Keystore Process",
+	    "command": [ "lair-keystore", "-r", this.config.keystore.keystore_path, "server", "-p" ],
 	    "x_env": {
 		"RUST_LOG": this.options.lair_log,
 	    },
+	    "input": "",
 	});
 
 	this.lair.stdout( line => {
@@ -165,17 +186,20 @@ class Holochain extends EventEmitter {
 	    this.emit("lair:stderr", parts.line, parts );
 	});
 
+	log.debug("Sending input to %s (writable: %s)", this.lair.toString(), this.lair._process.stdin.writable );
+	this.lair._process.stdin.end("\n");
+
 	await this.lair.ready( 4_000 );
 	log.debug("Started Lair subprocess with PID: %s", this.lair.pid );
 
-	await this.lair.output("lair-keystore-ready");
+	await this.lair.output("running");
 	log.normal("Lair is ready...");
 
 
 	log.info("Starting conductor subprocess with debug level: %s", this.options.conductor_log );
 	this.conductor			= new SubProcess({
-	    "name": "conductor",
-	    "command": [ "holochain", "-c", this.config_file ],
+	    "name": "Holochain Conductor",
+	    "command": [ "holochain", "-p", "-c", this.config_file ],
 	    "x_env": {
 		"RUST_LOG": this.options.conductor_log,
 	    },
@@ -190,6 +214,9 @@ class Holochain extends EventEmitter {
 	    let parts			= dissect_rust_log( line );
 	    this.emit("conductor:stderr", parts.line, parts );
 	});
+
+	log.debug("Sending input to %s (writable: %s)", this.conductor.toString(), this.conductor._process.stdin.writable );
+	this.conductor._process.stdin.end("\n");
 
 	await this.conductor.ready( 4_000 );
 	log.debug("Started Conductor subprocess with PID: %s", this.conductor.pid );
@@ -243,7 +270,8 @@ class Holochain extends EventEmitter {
 
 	    if ( this._cleanup_config === true ) {
 		log.warn("Removing automatically generated config file: %s", this.config_file );
-		fs.unlinkSync( this.config_file );
+		if ( fs.existsSync( this.config_file ) )
+		    fs.unlinkSync( this.config_file );
 	    }
 
 	    if ( this._cleanup_basedir !== false ) {

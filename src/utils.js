@@ -70,6 +70,7 @@ function dissect_rust_log ( line ) {
 	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
 	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
 
+	    level			= "NORMAL";
 	    context			= `(${group}) ${location}`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}

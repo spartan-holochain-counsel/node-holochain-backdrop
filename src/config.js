@@ -27,10 +27,10 @@ async function generate ( base_dir, admin_port ) {
     log.info("Determined admin port to be (given port: %s): %s", admin_port, port );
     return Object.assign({
 	"environment_path": path.resolve( base_dir, "databases" ),
-	"keystore_path": path.resolve( base_dir, "lair" ),
-	"passphrase_service": {
-	    "type": "danger_insecure_from_config",
-	    "passphrase": "testing",
+	"keystore": {
+	    "type": "lair_server",
+	    "keystore_path": path.resolve( base_dir, "lair" ),
+	    "danger_passphrase_insecure_from_config": "",
 	},
 	"admin_interfaces": [{
 	    "driver": {
@@ -39,6 +39,7 @@ async function generate ( base_dir, admin_port ) {
 	    },
 	}],
 	"network": DEFAULT_NETWORK_CONFIG,
+	"db_sync_strategy": "Fast",
     });
 }
 
