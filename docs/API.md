@@ -174,7 +174,7 @@ A method that will create Agent keys, register DNAs, and install Apps for each A
   - eg. `<app_id_prefix>-<agent>`
 - `app_port` - (*required*) the port to attach for the app interface
 - `dnas` - (*required*) an object with
-  - `key` - the DNA nickname
+  - `key` - the DNA role ID
   - `value` - the file path for the DNA package
 - `agents` - (*optional*) an array of names for agent clients
   - defaults to `[ "alice" ]`
@@ -188,7 +188,7 @@ let holochain = new Holochain();
 await holochain.start();
 
 let clients = await holochain.backdrop( "my-app", 44910, {
-    "dna_nickname": "/some/path/to/dna/file.dna",
+    "dna_role_id": "/some/path/to/dna/file.dna",
 }, [
     "alice",
     "bobby",
@@ -201,7 +201,7 @@ let clients = await holochain.backdrop( "my-app", 44910, {
 //         "actor": "alice",
 //         "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
 //         "cells": {
-//             "dna_nickname": {
+//             "dna_role_id": {
 //                 "id": [
 //                     new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
 //                     new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
@@ -216,7 +216,7 @@ let clients = await holochain.backdrop( "my-app", 44910, {
 //         "actor": "bobby",
 //         "agent": new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP"),
 //         "cells": {
-//             "dna_nickname": {
+//             "dna_role_id": {
 //                 "id": [
 //                     new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
 //                     new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP")
