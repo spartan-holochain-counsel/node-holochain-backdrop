@@ -37,7 +37,7 @@ const log_levels			= {
     fatal: 0,
     error: 1,
     warn: 2,
-    // normal: 3,
+    normal: 3,
     info: 4,
     debug: 5,
     silly: 6,

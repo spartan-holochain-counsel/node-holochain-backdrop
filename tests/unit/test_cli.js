@@ -35,6 +35,8 @@ function basic_tests () {
     });
 
     it("should specify admin port and config location", async function () {
+	this.timeout( 5_000 );
+
 	await main( cmd_args( "-p", "48756", "-c", "tests/tmp/config.yaml" ), async ( holochain ) => {
 	    try {
 		expect( holochain.adminPorts()[0] ).to.equal( 48756 );
