@@ -120,6 +120,7 @@ function mktmpdir () {
 module.exports = {
     sanitize_str,
     eclipse_right,
+    eclipse_left,
     dissect_rust_log,
     mktmpdir,
 };
