@@ -66,6 +66,7 @@ function dissect_rust_log ( line ) {
 	let context			= `?`;
 	let msg_parts			= msg.split(" ");
 
+
 	if ( msg_parts[0].includes("wasm_trace") ) {
 	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
 	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
@@ -74,11 +75,18 @@ function dissect_rust_log ( line ) {
 	    context			= `(${group}) ${location}`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}
-	else if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1].includes("::") ) {
+	else if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1] && msg_parts[1].includes("::") ) {
+	    // Feb 28 13:47:41.144  INFO										// 43 characters
+	    // publish_dht_ops_workflow{agent=AgentPubKey(uhCAk3O9tjVpZzUzCjZTnRQR-HBHzrnLDOQVvjvp_brKS8zBsYH36)}:	// msg_parts[0]
+	    // holochain::core::workflow::publish_dht_ops_workflow:							// msg_parts[1]
+	    // committed sent ops											// msg_parts.slice(2).join(" ")
+	    if ( msg_parts[0].includes("publish_dht_ops_workflow") ) {
+		msg_parts[0]		= msg_parts[0].slice( 59, 59+53 );
+	    }
+
 	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
 	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
 
-	    if ( group.includes("call_zome") )
 	    context			= `(${group}) ${location}`;
 	    msg				= msg_parts.slice(2).join(" ");
 	}
@@ -92,10 +100,10 @@ function dissect_rust_log ( line ) {
 	}
 
 	parts.date			= date;
-	parts.level			= level.replace(strip_escape_codes, "").trim().toLowerCase();
+	parts.level			= level.replace(strip_escape_codes, "").trim().toUpperCase();
 	parts.context			= context;
 	parts.message			= msg;
-	parts.line			= `${date.toISOString()} ${level}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | ${eclipse_right(msg, 2000)}`;
+	parts.line			= `${date.toISOString()} ${parts.level.slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | ${eclipse_right(msg, 2000)}`;
     } catch (err) {
 	// log.silly("Failed to dissect Rust log: %s", line );
     } finally {

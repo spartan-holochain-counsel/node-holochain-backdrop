@@ -29,6 +29,11 @@ A class for managing the configuration and lifecycle of a `holochain` process an
   - defaults to `info`
 - `options.conductor_log` - (*optional*) set the logging level for Holochain (conductor)
   - defaults to `info`
+- `options.default_loggers` - alias for options `default_stdout_loggers` and `default_stderr_loggers`
+- `options.default_stdout_loggers` - add the default console loggers for Lair and Conductor `stdout`
+  - defaults to `false`
+- `options.default_stderr_loggers` - add the default console loggers for Lair and Conductor `stderr`
+  - defaults to `false`
 
 Example usage
 ```javascript

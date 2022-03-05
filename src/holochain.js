@@ -24,6 +24,9 @@ const DEFAULT_COND_LOG			= process.env.RUST_LOG || "info";
 const HOLOCHAIN_DEFAULTS		= {
     "lair_log": process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
     "conductor_log": process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
+    "default_loggers": false,
+    "default_stdout_loggers": false,
+    "default_stderr_loggers": false,
 };
 
 
@@ -54,6 +57,36 @@ class Holochain extends EventEmitter {
 	this._setup()
 	    .then( this._prep_fulfill, this._prep_reject )
 	    .catch( this._prep_reject );
+
+	if ( this.options.default_loggers === true ) {
+	    log.debug("Adding all default stdout/stderr");
+	    this.options.default_stdout_loggers		= true;
+	    this.options.default_stderr_loggers		= true;
+	}
+
+	if ( this.options.default_stdout_loggers === true ) {
+	    log.silly("Adding default stdout line event logging hooks");
+	    this.on("lair:stdout", (line, parts) => {
+		log.debug( "\x1b[39;1m     Lair STDOUT:\x1b[22;37m %s", line );
+	    });
+
+	    this.on("conductor:stdout", (line, parts) => {
+		log.debug( "\x1b[39;1mConductor STDOUT:\x1b[22;37m %s", line );
+	    });
+
+	}
+	if ( this.options.default_stderr_loggers === true ) {
+	    log.silly("Adding default stderr line event logging hooks");
+	    this.on("lair:stderr", (line, parts) => {
+		log.debug( "\x1b[31;1m	   Lair STDERR:\x1b[22m %s", line );
+	    });
+
+	    this.on("conductor:stderr", (line, parts) => {
+		if ( line.includes("func_translator") )
+		    return;
+		log.debug( "\x1b[31;1mConductor STDERR:\x1b[22m %s", line );
+	    });
+	}
     }
 
     async _setup () {
