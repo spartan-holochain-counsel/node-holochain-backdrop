@@ -67,24 +67,24 @@ class Holochain extends EventEmitter {
 	if ( this.options.default_stdout_loggers === true ) {
 	    log.silly("Adding default stdout line event logging hooks");
 	    this.on("lair:stdout", (line, parts) => {
-		log.debug( "\x1b[39;1m     Lair STDOUT:\x1b[22;37m %s", line );
+		console.log( "\x1b[39;1m     Lair STDOUT:\x1b[22;37m %s", line );
 	    });
 
 	    this.on("conductor:stdout", (line, parts) => {
-		log.debug( "\x1b[39;1mConductor STDOUT:\x1b[22;37m %s", line );
+		console.log( "\x1b[39;1mConductor STDOUT:\x1b[22;37m %s", line );
 	    });
 
 	}
 	if ( this.options.default_stderr_loggers === true ) {
 	    log.silly("Adding default stderr line event logging hooks");
 	    this.on("lair:stderr", (line, parts) => {
-		log.debug( "\x1b[31;1m	   Lair STDERR:\x1b[22m %s", line );
+		console.log( "\x1b[31;1m	   Lair STDERR:\x1b[22m %s", line );
 	    });
 
 	    this.on("conductor:stderr", (line, parts) => {
 		if ( line.includes("func_translator") )
 		    return;
-		log.debug( "\x1b[31;1mConductor STDERR:\x1b[22m %s", line );
+		console.log( "\x1b[31;1mConductor STDERR:\x1b[22m %s", line );
 	    });
 	}
     }
