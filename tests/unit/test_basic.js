@@ -10,6 +10,8 @@ const { Holochain, Config }		= require('../../src/index.js');
 
 function basic_tests () {
     it("should start and stop holochain", async function () {
+	this.timeout( 5_000 );
+
 	let holochain			= new Holochain();
 	try {
 	    let base_dir		= await holochain.setup();

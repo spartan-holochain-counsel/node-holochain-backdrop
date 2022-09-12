@@ -337,10 +337,10 @@ class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    async backdrop ( app_id_prefix, app_port, dnas, agents = [ "alice" ] ) {
+    async backdrop ( app_id_prefix, app_port, dnas, agents = [ "alice" ], opts = {} ) {
 	const ports			= this.adminPorts();
 	log.debug("Waiting for Admin client to connect @ ws://localhost:%s", ports[0] );
-	const admin			= await AdminWebsocket.connect( "ws://localhost:" + ports[0] );
+	const admin			= await AdminWebsocket.connect( "ws://localhost:" + ports[0], opts.timeout );
 
 	log.debug("Attaching app interface to port %s", app_port );
 	await admin.attachAppInterface({

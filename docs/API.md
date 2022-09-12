@@ -172,7 +172,7 @@ await holochain.destroy();
 ```
 
 
-### `<Holochain>.backdrop( app_id_prefix, app_port, dnas, agents ) -> Promise<object>`
+### `<Holochain>.backdrop( app_id_prefix, app_port, dnas, agents, opts ) -> Promise<object>`
 A method that will create Agent keys, register DNAs, and install Apps for each Agent.
 
 - `app_id_prefix` - (*required*) used to create app IDs combined with agent names
@@ -183,6 +183,8 @@ A method that will create Agent keys, register DNAs, and install Apps for each A
   - `value` - the file path for the DNA package
 - `agents` - (*optional*) an array of names for agent clients
   - defaults to `[ "alice" ]`
+- `opts` - manually override settings
+  - `timeout` - a number that is passed forward when creating `AdminWebsocket.connect( url, opts.timeout )`
 
 Returns a Promise that resolves with agent configurations when administrative calls are completed.
 

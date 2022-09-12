@@ -19,12 +19,16 @@ function cmd_args ( ...args ) {
 
 function basic_tests () {
     it("should start and stop holochain", async function () {
+	this.timeout( 5_000 );
+
 	await main( cmd_args() , async ( holochain ) => {
 	    await holochain.destroy();
 	});
     });
 
     it("should specify admin port", async function () {
+	this.timeout( 5_000 );
+
 	await main( cmd_args( "-p", "48756" ), async ( holochain ) => {
 	    try {
 		expect( holochain.adminPorts()[0] ).to.equal( 48756 );
