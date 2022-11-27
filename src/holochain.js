@@ -225,7 +225,7 @@ class Holochain extends EventEmitter {
 	await this.lair.ready( 4_000 );
 	log.debug("Started Lair subprocess with PID: %s", this.lair.pid );
 
-	await this.lair.output("running");
+	await this.lair.output("running", 15_000 );
 	log.normal("Lair is ready...");
 
 
@@ -254,7 +254,7 @@ class Holochain extends EventEmitter {
 	await this.conductor.ready( 4_000 );
 	log.debug("Started Conductor subprocess with PID: %s", this.conductor.pid );
 
-	await this.conductor.output("Conductor ready", 5000 );
+	await this.conductor.output("Conductor ready", 15_000 );
 
 	log.normal("Conductor is ready...");
 	this._ready_fulfill();
