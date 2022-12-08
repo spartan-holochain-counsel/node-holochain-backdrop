@@ -67,24 +67,30 @@ class Holochain extends EventEmitter {
 	if ( this.options.default_stdout_loggers === true ) {
 	    log.silly("Adding default stdout line event logging hooks");
 	    this.on("lair:stdout", (line, parts) => {
-		console.log( "\x1b[39;1m     Lair STDOUT:\x1b[22;37m %s", line );
+		if ( parts.multiline )
+		    console.log( "\x1b[39;1m     Lair STDOUT:\x1b[0m %s\x1b[0m", line );
+		else
+		    console.log( "\x1b[39;1m     Lair STDOUT:\x1b[37;22m %s\x1b[0m", line );
 	    });
 
 	    this.on("conductor:stdout", (line, parts) => {
-		console.log( "\x1b[39;1mConductor STDOUT:\x1b[22;37m %s", line );
+		if ( parts.multiline )
+		    console.log( "\x1b[39;1mConductor STDOUT:\x1b[0m %s\x1b[0m", line );
+		else
+		    console.log( "\x1b[39;1mConductor STDOUT:\x1b[37;22m %s\x1b[0m", line );
 	    });
 
 	}
 	if ( this.options.default_stderr_loggers === true ) {
 	    log.silly("Adding default stderr line event logging hooks");
 	    this.on("lair:stderr", (line, parts) => {
-		console.log( "\x1b[31;1m	   Lair STDERR:\x1b[22m %s", line );
+		console.log( "\x1b[31;1m     Lair STDERR:\x1b[0m %s\x1b[0m", line );
 	    });
 
 	    this.on("conductor:stderr", (line, parts) => {
 		if ( line.includes("func_translator") )
 		    return;
-		console.log( "\x1b[31;1mConductor STDERR:\x1b[22m %s", line );
+		console.log( "\x1b[31;1mConductor STDERR:\x1b[0m %s\x1b[0m", line );
 	    });
 	}
     }

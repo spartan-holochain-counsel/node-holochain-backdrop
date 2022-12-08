@@ -44,8 +44,21 @@ function dissect_rust_log ( line ) {
 	"level": null,
 	"context": null,
 	"message": line,
+	"multiline": false,
 	line,
     };
+
+    // Shortcut empty lines
+    if ( line.trim() === "" )
+	return parts;
+
+    // If the line starts with whitespace, we assume that this is part of a multiline output
+    if ( line.startsWith(" ")
+	 || line.trim().length === 1 // Catch a closing brace or bracket from debug output
+       ) {
+	parts.multiline			= true;
+	return parts;
+    }
 
     try {
 	let date			= line.slice(  4, 23 );
@@ -103,7 +116,7 @@ function dissect_rust_log ( line ) {
 	parts.level			= level.replace(strip_escape_codes, "").trim().toUpperCase();
 	parts.context			= context;
 	parts.message			= msg;
-	parts.line			= `${date.toISOString()} ${parts.level.slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | ${eclipse_right(msg, 2000)}`;
+	parts.line			= `\x1b[22;37m${date.toISOString()}\x1b[35m ${parts.level.slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | \x1b[0m${eclipse_right(msg, 2000)}\x1b[0m`;
     } catch (err) {
 	// log.silly("Failed to dissect Rust log: %s", line );
     } finally {
