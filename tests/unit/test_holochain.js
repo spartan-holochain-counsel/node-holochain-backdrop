@@ -41,6 +41,32 @@ function basic_tests () {
 	    await holochain.destroy();
 	}
     });
+
+    it("should try backdrop setup", async function () {
+	this.timeout( 20_000 );
+
+	const admin_port		= 29876;
+	let holochain			= new Holochain({
+	    "config": { admin_port },
+	});
+
+	let failed			= false;
+	try {
+	    await holochain.start();
+	    await holochain.backdrop( "test", 44910, {
+		"memory": __filename,
+	    });
+	} catch (err) {
+	    failed			= true;
+
+	    expect( err.type		).to.equal("error");
+	    expect( err.data.data	).to.have.string("invalid gzip header");
+	} finally {
+	    await holochain.destroy();
+	}
+
+       expect( failed			).to.be.true;
+    });
 }
 
 function errors_tests () {

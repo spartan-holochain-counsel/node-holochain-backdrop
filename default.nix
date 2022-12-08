@@ -11,11 +11,16 @@ let
       happs = false;
     };
 
+    rustVersion = {
+      track = "stable";
+      version = "1.63.0";
+    };
+
     holochainVersionId = "custom";
     holochainVersion = {
       url = "https://github.com/holochain/holochain";
-      rev = "holochain-0.0.161"; # Sep 8, 2022 - cf8adc073596f4f5fc3dcf31c30bc8ade47a6f93
-      sha256 = "0cjyqf08z3k5zqvrhgnl8qwni20ib7q2xyls14slf671b96l77f6";
+      rev = "holochain-0.0.175"; # Nov 30, 2022 - 64286bf7aa10e9e93032361a69843daa354fdb1b
+      sha256 = "0djcycqp2g2ci9gr03v5bh2r7419bcgp06fwb9hh2asa6qm18909";
       cargoLock = {
         outputHashes = {
         };
@@ -27,18 +32,14 @@ let
         # "kitsune-p2p-tx2-proxy"
       ];
 
-      rustVersion = "1.63.0";
-
       lair = {
         url = "https://github.com/holochain/lair";
-        rev = "lair_keystore-v0.2.0"; # Jun 20, 2022 - 20b18781d217f172187f16a0ef86b78eb1fcd3bd
-        sha256 = "1j3a8sgcg0dki65cqda2dn5wn85m8ljlvnzyglaayhvljk4xkfcz";
+        rev = "lair_keystore-v0.2.2"; # Nov 2, 2022 - 004d15c05f51bb625cb5c8db6e71f4a58ff4d3fe
+        sha256 = "1kh2p6lyw3yi9ah8ci6y0815w6fnmwplrkl2wsdc535qp7wmqm3y";
 
         binsFilter = [
           "lair-keystore"
         ];
-
-        rustVersion = "1.63.0";
 
         cargoLock = {
           outputHashes = {

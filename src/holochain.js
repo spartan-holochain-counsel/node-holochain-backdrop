@@ -355,15 +355,15 @@ class Holochain extends EventEmitter {
 
 	log.debug("Registering DNAs...");
 	const dna_list			= await Promise.all(
-	    Object.entries( dnas ).map( async ([role_id, dna_path]) => {
+	    Object.entries( dnas ).map( async ([role_name, dna_path]) => {
 		log.debug(" - registering DNA package: %s", dna_path );
 		const dna_hash		= await new HoloHash( await admin.registerDna({
 		    "path": dna_path,
 		}) );
-		log.silly("Registered DNA '%s' with hash (%s) from: %s", role_id, String(dna_hash), dna_path );
+		log.silly("Registered DNA '%s' with hash (%s) from: %s", role_name, String(dna_hash), dna_path );
 
 		return {
-		    "role_id": role_id,
+		    "role_name": role_name,
 		    "path": dna_path,
 		    "hash": new HoloHash( dna_hash ),
 		};
@@ -387,8 +387,8 @@ class Holochain extends EventEmitter {
 	    await admin.installApp({
 		"installed_app_id": app_id,
 		"agent_key": pubkey,
-		"dnas": dna_list.map( ({ role_id, hash }) => {
-		    return { role_id, hash };
+		"dnas": dna_list.map( ({ role_name, hash }) => {
+		    return { role_name, hash };
 		}),
 	    });
 
@@ -402,7 +402,7 @@ class Holochain extends EventEmitter {
 		"actor": actor,
 		"agent": pubkey,
 		"cells": cell_list.reduce( (acc, cell) => {
-		    acc[cell.dna.role_id]	= cell;
+		    acc[cell.dna.role_name]	= cell;
 		    return acc;
 		}, {}),
 	    };
