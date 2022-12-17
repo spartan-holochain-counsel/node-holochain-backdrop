@@ -3,6 +3,8 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
     level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
 });
 
+global.WebSocket			= require('ws');
+
 const fs				= require('fs');
 const YAML				= require('yaml');
 const EventEmitter			= require('events');
@@ -10,8 +12,7 @@ const { execSync }			= require('child_process');
 const { SubProcess,
 	TimeoutError }			= require('@whi/subprocess');
 const { HoloHash }			= require('@whi/holo-hash');
-const { AdminWebsocket,
-	AppWebsocket }			= require('@holochain/conductor-api');
+const { AdminClient }			= require('@whi/holochain-client');
 
 const { dissect_rust_log,
 	mktmpdir }			= require('./utils.js');
@@ -346,73 +347,77 @@ class Holochain extends EventEmitter {
     async backdrop ( app_id_prefix, app_port, dnas, agents = [ "alice" ], opts = {} ) {
 	const ports			= this.adminPorts();
 	log.debug("Waiting for Admin client to connect @ ws://localhost:%s", ports[0] );
-	const admin			= await AdminWebsocket.connect( "ws://localhost:" + ports[0], opts.timeout );
-
-	log.debug("Attaching app interface to port %s", app_port );
-	await admin.attachAppInterface({
-	    "port": app_port,
+	const admin			= new AdminClient( ports[0], {
+	    "timeout": opts.timeout,
 	});
 
-	log.debug("Registering DNAs...");
-	const dna_list			= await Promise.all(
-	    Object.entries( dnas ).map( async ([role_name, dna_path]) => {
-		log.debug(" - registering DNA package: %s", dna_path );
-		const dna_hash		= await new HoloHash( await admin.registerDna({
-		    "path": dna_path,
-		}) );
-		log.silly("Registered DNA '%s' with hash (%s) from: %s", role_name, String(dna_hash), dna_path );
+	log.debug("Attaching app interface to port %s", app_port );
+	await admin.attachAppInterface( app_port );
 
-		return {
-		    "role_name": role_name,
-		    "path": dna_path,
-		    "hash": new HoloHash( dna_hash ),
-		};
-	    })
-	);
+	log.debug("Generating hApp bundle from DNAs...");
+	const happ_bundle_bytes		= await create_happ_bundle( app_id_prefix, dnas );
 
 	log.debug("Creating agents and installing apps...");
 	const agent_list		= await Promise.all( agents.map(async ( actor ) => {
-	    const pubkey		= new HoloHash( await admin.generateAgentPubKey() );
+	    const pubkey		= await admin.generateAgent();
 	    const app_id		= `${app_id_prefix}-${actor}`;
 
-	    const cell_list		= dna_list.map( dna => {
-		return {
-		    "id": [ dna.hash, pubkey ],
-		    "dna": dna,
-		    "agent": pubkey
-		};
-	    });
-
 	    log.debug("Installing app '%s' for agent %s...", app_id, actor );
-	    await admin.installApp({
-		"installed_app_id": app_id,
-		"agent_key": pubkey,
-		"dnas": dna_list.map( ({ role_name, hash }) => {
-		    return { role_name, hash };
-		}),
-	    });
+	    const installation		= await admin.installApp( app_id, pubkey, happ_bundle_bytes );
 
 	    log.debug("Activating app '%s' for agent %s...", app_id, actor );
-	    await admin.activateApp({
-		"installed_app_id": app_id,
-	    });
+	    await admin.enableApp( app_id );
 
 	    return {
 		"id": app_id,
 		"actor": actor,
 		"agent": pubkey,
-		"cells": cell_list.reduce( (acc, cell) => {
-		    acc[cell.dna.role_name]	= cell;
+		"cells": Object.entries( installation.roles ).reduce( (acc, [role_name, cell_info]) => {
+		    acc[ role_name ]		= {
+			"role_name": role_name,
+			"id": cell_info.cell_id,
+			"dna": {
+			    "path": dnas[ role_name ],
+			    "hash": cell_info.cell_id[0],
+			    "agent": pubkey,
+			},
+			"agent": pubkey,
+		    };
 		    return acc;
 		}, {}),
 	    };
 	}) );
 
 	return agent_list.reduce( (acc, happ) => {
-	    acc[happ.actor]			= happ;
+	    acc[happ.actor]		= happ;
 	    return acc;
 	}, {});
     }
+}
+
+async function create_happ_bundle ( name, dnas ) {
+    const bundle_config			= {
+	"manifest": {
+	    "manifest_version": "1",
+	    "name": name,
+	    "roles": []
+	},
+	"resources": {},
+    };
+
+    for ( let [role_name, dna_path] of Object.entries(dnas) ) {
+	const resource_path		= `./${role_name}.dna`;
+	bundle_config.manifest.roles.push({
+	    "name": role_name,
+	    "dna": {
+		"bundled": resource_path,
+	    },
+	});
+	const dna_bundle_bytes		= fs.readFileSync( dna_path );
+	bundle_config.resources[ resource_path ] = dna_bundle_bytes;
+    }
+
+    return bundle_config;
 }
 
 

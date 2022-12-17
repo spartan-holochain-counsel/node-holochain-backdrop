@@ -42,7 +42,7 @@ function basic_tests () {
 	}
     });
 
-    it("should try backdrop setup", async function () {
+    it("should setup hApp using backdrop", async function () {
 	this.timeout( 20_000 );
 
 	const admin_port		= 29876;
@@ -50,22 +50,26 @@ function basic_tests () {
 	    "config": { admin_port },
 	});
 
-	let failed			= false;
 	try {
 	    await holochain.start();
-	    await holochain.backdrop( "test", 44910, {
-		"memory": __filename,
+	    const clients		= await holochain.backdrop( "test", 44910, {
+		"test": path.resolve( __dirname, "../test.dna" ),
 	    });
-	} catch (err) {
-	    failed			= true;
 
-	    expect( err.type		).to.equal("error");
-	    expect( err.data.data	).to.have.string("invalid gzip header");
+	    expect( clients.alice.id	).to.equal("test-alice");
+	    expect( clients.alice.actor	).to.equal("alice");
+	    expect( clients.alice.agent	).to.be.an("AgentPubKey");
+
+	    expect( clients.alice.cells.test.role_name	).to.equal("test");
+	    expect( clients.alice.cells.test.id[0]	).to.be.a("DnaHash");
+	    expect( clients.alice.cells.test.id[1]	).to.be.a("AgentPubKey");
+	    expect( clients.alice.cells.test.dna.path	).to.be.a("string");
+	    expect( clients.alice.cells.test.dna.hash	).to.be.a("DnaHash");
+	    expect( clients.alice.cells.test.dna.agent	).to.be.a("AgentPubKey");
+	    expect( clients.alice.cells.test.agent	).to.be.a("AgentPubKey");
 	} finally {
 	    await holochain.destroy();
 	}
-
-       expect( failed			).to.be.true;
     });
 }
 

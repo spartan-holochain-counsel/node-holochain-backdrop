@@ -9,6 +9,13 @@ node_modules:		package-lock.json
 	touch $@
 build:			node_modules
 
+use-local-holochain-client:
+	npm uninstall @whi/holochain-client
+	npm install --save ../js-holochain-client
+use-npm-holochain-client:
+	npm uninstall @whi/holochain-client
+	npm install --save @whi/holochain-client
+
 
 #
 # Testing
