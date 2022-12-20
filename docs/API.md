@@ -180,7 +180,12 @@ A method that will create Agent keys, register DNAs, and install Apps for each A
 - `app_port` - (*required*) the port to attach for the app interface
 - `dnas` - (*required*) an object with
   - `key` - the DNA role ID
-  - `value` - the file path for the DNA package
+  - `value` - a DNA config object with
+    - `path` - (*required*) the file path for the DNA package
+    - `zomes` - (*required*) a zome/function config that will be used to create an unrestricted
+      capability grant
+      - `key` - the zome name
+      - `value` - list of function names for the corresponding zome name
 - `agents` - (*optional*) an array of names for agent clients
   - defaults to `[ "alice" ]`
 - `opts` - manually override settings
@@ -195,7 +200,12 @@ let holochain = new Holochain();
 await holochain.start();
 
 let clients = await holochain.backdrop( "my-app", 44910, {
-    "dna_role_id": "/some/path/to/dna/file.dna",
+    "dna_role_id": {
+        "path": "/some/path/to/dna/file.dna",
+        "zomes": {
+            "zome_name": [ "function_name" ],
+        },
+    },
 }, [
     "alice",
     "bobby",
@@ -214,7 +224,11 @@ let clients = await holochain.backdrop( "my-app", 44910, {
 //                     new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
 //                 ],
 //                 "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                 "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
+//                 "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
+//                 "source": "/some/path/to/dna/file.dna",
+//                 "zomes": {
+//                     "zome_name": [ "function_name" ]
+//                 }
 //             }
 //         }
 //     },
@@ -229,7 +243,11 @@ let clients = await holochain.backdrop( "my-app", 44910, {
 //                     new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP")
 //                 ],
 //                 "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                 "agent": new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP")
+//                 "agent": new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP"),
+//                 "source": "/some/path/to/dna/file.dna",
+//                 "zomes": {
+//                     "zome_name": [ "function_name" ]
+//                 }
 //             }
 //         }
 //     }

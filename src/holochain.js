@@ -354,8 +354,17 @@ class Holochain extends EventEmitter {
 	log.debug("Attaching app interface to port %s", app_port );
 	await admin.attachAppInterface( app_port );
 
+	const dna_map			= {};
+	for ( let role_name in dnas ) {
+	    if ( dnas[ role_name ].path === undefined )
+		throw new TypeError(`Missing path in backdrop DNA config for role '${role_name}'`);
+	    if ( dnas[ role_name ].zomes === undefined )
+		throw new TypeError(`Missing zomes in backdrop DNA config for role '${role_name}'`);
+	    dna_map[ role_name ]	= dnas[ role_name ].path;
+	}
+
 	log.debug("Generating hApp bundle from DNAs...");
-	const happ_bundle_bytes		= await create_happ_bundle( app_id_prefix, dnas );
+	const happ_bundle_bytes		= await create_happ_bundle( app_id_prefix, dna_map );
 
 	log.debug("Creating agents and installing apps...");
 	const agent_list		= await Promise.all( agents.map(async ( actor ) => {
@@ -368,6 +377,18 @@ class Holochain extends EventEmitter {
 	    log.debug("Activating app '%s' for agent %s...", app_id, actor );
 	    await admin.enableApp( app_id );
 
+	    for ( let role_name in dnas ) {
+		const functions		= [];
+		for ( let zome_name in dnas[ role_name ].zomes ) {
+		    for ( let fn_name of dnas[ role_name ].zomes[ zome_name ] ) {
+			functions.push( [ zome_name, fn_name ] );
+		    }
+		}
+		const agent_hash	= installation.roles[ role_name ].cell_id[1];
+		const dna_hash		= installation.roles[ role_name ].cell_id[0];
+		await admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, functions );
+	    }
+
 	    return {
 		"id": app_id,
 		"actor": actor,
@@ -376,12 +397,10 @@ class Holochain extends EventEmitter {
 		    acc[ role_name ]		= {
 			"role_name": role_name,
 			"id": cell_info.cell_id,
-			"dna": {
-			    "path": dnas[ role_name ],
-			    "hash": cell_info.cell_id[0],
-			    "agent": pubkey,
-			},
+			"dna": cell_info.cell_id[0],
 			"agent": pubkey,
+			"source": dnas[ role_name ].path,
+			"zomes": dnas[ role_name ].zomes,
 		    };
 		    return acc;
 		}, {}),

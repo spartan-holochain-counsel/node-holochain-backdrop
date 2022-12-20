@@ -53,7 +53,10 @@ function basic_tests () {
 	try {
 	    await holochain.start();
 	    const clients		= await holochain.backdrop( "test", 44910, {
-		"test": path.resolve( __dirname, "../test.dna" ),
+		"test": {
+		    "path": path.resolve( __dirname, "../test.dna" ),
+		    "zomes": {},
+		},
 	    });
 
 	    expect( clients.alice.id	).to.equal("test-alice");
@@ -63,10 +66,10 @@ function basic_tests () {
 	    expect( clients.alice.cells.test.role_name	).to.equal("test");
 	    expect( clients.alice.cells.test.id[0]	).to.be.a("DnaHash");
 	    expect( clients.alice.cells.test.id[1]	).to.be.a("AgentPubKey");
-	    expect( clients.alice.cells.test.dna.path	).to.be.a("string");
-	    expect( clients.alice.cells.test.dna.hash	).to.be.a("DnaHash");
-	    expect( clients.alice.cells.test.dna.agent	).to.be.a("AgentPubKey");
+	    expect( clients.alice.cells.test.source	).to.be.a("string");
+	    expect( clients.alice.cells.test.dna	).to.be.a("DnaHash");
 	    expect( clients.alice.cells.test.agent	).to.be.a("AgentPubKey");
+	    expect( clients.alice.cells.test.zomes	).to.be.a("object");
 	} finally {
 	    await holochain.destroy();
 	}
