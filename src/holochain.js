@@ -425,15 +425,12 @@ async function create_happ_bundle ( name, dnas ) {
     };
 
     for ( let [role_name, dna_path] of Object.entries(dnas) ) {
-	const resource_path		= `./${role_name}.dna`;
 	bundle_config.manifest.roles.push({
 	    "name": role_name,
 	    "dna": {
-		"bundled": resource_path,
+		"path": dna_path,
 	    },
 	});
-	const dna_bundle_bytes		= fs.readFileSync( dna_path );
-	bundle_config.resources[ resource_path ] = dna_bundle_bytes;
     }
 
     return bundle_config;
