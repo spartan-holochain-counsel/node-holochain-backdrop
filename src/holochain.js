@@ -356,10 +356,16 @@ class Holochain extends EventEmitter {
 
 	const dna_map			= {};
 	for ( let role_name in dnas ) {
+	    if ( typeof dnas[ role_name ] === "string" ) {
+		dnas[ role_name ]	= {
+		    "path":	dnas[ role_name ],
+		    "granted_functions":	"*",
+		}
+	    }
+
 	    if ( dnas[ role_name ].path === undefined )
 		throw new TypeError(`Missing path in backdrop DNA config for role '${role_name}'`);
-	    if ( dnas[ role_name ].zomes === undefined )
-		throw new TypeError(`Missing zomes in backdrop DNA config for role '${role_name}'`);
+
 	    dna_map[ role_name ]	= dnas[ role_name ].path;
 	}
 
@@ -378,15 +384,10 @@ class Holochain extends EventEmitter {
 	    await admin.enableApp( app_id );
 
 	    for ( let role_name in dnas ) {
-		const functions		= [];
-		for ( let zome_name in dnas[ role_name ].zomes ) {
-		    for ( let fn_name of dnas[ role_name ].zomes[ zome_name ] ) {
-			functions.push( [ zome_name, fn_name ] );
-		    }
-		}
 		const agent_hash	= installation.roles[ role_name ].cell_id[1];
 		const dna_hash		= installation.roles[ role_name ].cell_id[0];
-		await admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, functions );
+
+		await admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, dnas[ role_name ].granted_functions );
 	    }
 
 	    return {
@@ -400,7 +401,7 @@ class Holochain extends EventEmitter {
 			"dna": cell_info.cell_id[0],
 			"agent": pubkey,
 			"source": dnas[ role_name ].path,
-			"zomes": dnas[ role_name ].zomes,
+			"granted_functions": dnas[ role_name ].granted_functions,
 		    };
 		    return acc;
 		}, {}),
