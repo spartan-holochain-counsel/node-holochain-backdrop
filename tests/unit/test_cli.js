@@ -19,7 +19,7 @@ function cmd_args ( ...args ) {
 
 function basic_tests () {
     it("should start and stop holochain", async function () {
-	this.timeout( 5_000 );
+	this.timeout( 10_000 );
 
 	await main( cmd_args() , async ( holochain ) => {
 	    await holochain.destroy();
@@ -27,7 +27,7 @@ function basic_tests () {
     });
 
     it("should specify admin port", async function () {
-	this.timeout( 5_000 );
+	this.timeout( 10_000 );
 
 	await main( cmd_args( "-p", "48756" ), async ( holochain ) => {
 	    try {
@@ -39,7 +39,7 @@ function basic_tests () {
     });
 
     it("should specify admin port and config location", async function () {
-	this.timeout( 5_000 );
+	this.timeout( 10_000 );
 
 	await main( cmd_args( "-p", "48756", "-c", "tests/tmp/config.yaml" ), async ( holochain ) => {
 	    try {
@@ -58,6 +58,8 @@ function basic_tests () {
 
 function errors_tests () {
     it("should fail because specified admin port and config don't match", async function () {
+	this.timeout( 10_000 );
+
 	let failed			= false;
 	try {
 	    await main( cmd_args( "-p", "48756", "-c", "tests/tmp/config.yaml" ), async ( holochain ) => {

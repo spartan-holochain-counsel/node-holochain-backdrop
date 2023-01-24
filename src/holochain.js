@@ -348,7 +348,7 @@ class Holochain extends EventEmitter {
 	const ports			= this.adminPorts();
 	log.debug("Waiting for Admin client to connect @ ws://localhost:%s", ports[0] );
 	const admin			= new AdminClient( ports[0], {
-	    "timeout": opts.timeout,
+	    "timeout": opts.timeout || 10_000,
 	});
 
 	log.debug("Attaching app interface to port %s", app_port );

@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@whi/holo-hash": "^0.3.0",
-    "@whi/holochain-client": "^0.79.0",
+    "@whi/holochain-client": "^0.80.0",
     "@whi/promise-timeout": "^0.1.1",
     "@whi/stdlog": "^0.3.4",
     "@whi/subprocess": "^0.2.1",
