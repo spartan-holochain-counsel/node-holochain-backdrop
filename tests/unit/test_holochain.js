@@ -4,6 +4,7 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
 });
 
 const expect				= require('chai').expect;
+const { AgentClient }			= require('@whi/holochain-client');
 const { Holochain }			= require('../../src/index.js');
 
 
@@ -52,22 +53,23 @@ function basic_tests () {
 
 	try {
 	    await holochain.start();
-	    const clients		= await holochain.backdrop( "test", 44910, {
+	    const { alice }		= await holochain.backdrop( "test", 44910, {
 		"test": path.resolve( __dirname, "../test.dna" ),
 	    });
 
-	    expect( clients.alice.id	).to.equal("test-alice");
-	    expect( clients.alice.actor	).to.equal("alice");
-	    expect( clients.alice.agent	).to.be.an("AgentPubKey");
+	    expect( alice.id		).to.equal("test-alice");
+	    expect( alice.actor		).to.equal("alice");
+	    expect( alice.agent		).to.be.an("AgentPubKey");
+	    expect( alice.client	).to.be.an("AgentClient");
 
-	    expect( clients.alice.cells.test.role_name	).to.equal("test");
-	    expect( clients.alice.cells.test.id[0]	).to.be.a("DnaHash");
-	    expect( clients.alice.cells.test.id[1]	).to.be.a("AgentPubKey");
-	    expect( clients.alice.cells.test.source	).to.be.a("string");
+	    expect( alice.cells.test.role_name	).to.equal("test");
+	    expect( alice.cells.test.id[0]	).to.be.a("DnaHash");
+	    expect( alice.cells.test.id[1]	).to.be.a("AgentPubKey");
+	    expect( alice.cells.test.source	).to.be.a("string");
 
-	    expect( clients.alice.cells.test.dna		).to.be.a("DnaHash");
-	    expect( clients.alice.cells.test.agent		).to.be.a("AgentPubKey");
-	    expect( clients.alice.cells.test.granted_functions	).to.equal("*");
+	    expect( alice.cells.test.dna		).to.be.a("DnaHash");
+	    expect( alice.cells.test.agent		).to.be.a("AgentPubKey");
+	    expect( alice.cells.test.granted_functions	).to.equal("*");
 	} finally {
 	    await holochain.destroy();
 	}

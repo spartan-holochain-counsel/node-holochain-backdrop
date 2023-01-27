@@ -12,7 +12,8 @@ const { execSync }			= require('child_process');
 const { SubProcess,
 	TimeoutError }			= require('@whi/subprocess');
 const { HoloHash }			= require('@whi/holo-hash');
-const { AdminClient }			= require('@whi/holochain-client');
+const { AdminClient,
+	AgentClient }			= require('@whi/holochain-client');
 
 const { dissect_rust_log,
 	mktmpdir }			= require('./utils.js');
@@ -28,7 +29,18 @@ const HOLOCHAIN_DEFAULTS		= {
     "default_loggers": false,
     "default_stdout_loggers": false,
     "default_stderr_loggers": false,
+    "clientConstructor": ( agent, roles, app_port ) => {
+	const client			= new AgentClient( agent, roles, app_port );
+	all_clients.push( client );
+	return client;
+    },
 };
+
+const all_clients			= [];
+function exit_cleanup () {
+    all_clients.forEach( client => client.close() );
+}
+process.once("exit", exit_cleanup );
 
 
 class Holochain extends EventEmitter {
@@ -390,6 +402,12 @@ class Holochain extends EventEmitter {
 		await admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, dnas[ role_name ].granted_functions );
 	    }
 
+	    const roles			= Object.entries( installation.roles )
+		  .reduce( (acc, [role_name, cell_info]) => {
+		      acc[ role_name ]	= cell_info.cell_id[0];
+		      return acc;
+		  }, {});
+
 	    return {
 		"id": app_id,
 		"actor": actor,
@@ -405,6 +423,7 @@ class Holochain extends EventEmitter {
 		    };
 		    return acc;
 		}, {}),
+		"client": this.options.clientConstructor( pubkey, roles, app_port ),
 	    };
 	}) );
 
