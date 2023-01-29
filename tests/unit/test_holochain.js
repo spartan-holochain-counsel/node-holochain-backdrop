@@ -43,7 +43,7 @@ function basic_tests () {
 	}
     });
 
-    it("should setup hApp using backdrop", async function () {
+    it("should setup DNAs using backdrop", async function () {
 	this.timeout( 20_000 );
 
 	const admin_port		= 29876;
@@ -53,23 +53,45 @@ function basic_tests () {
 
 	try {
 	    await holochain.start();
-	    const { alice }		= await holochain.backdrop( "test", 44910, {
-		"test": path.resolve( __dirname, "../test.dna" ),
+	    const { alice }		= await holochain.backdrop({
+		"happ1": path.resolve( __dirname, "../test.happ" ),
+		"happ2": {
+		    "test_dna": path.resolve( __dirname, "../test.dna" ),
+		},
+		"happ3": {
+		    "manifest": {
+			"manifest_version": "1",
+			"name": "test",
+			"roles": [{
+			    "name": "test_dna",
+			    "dna": {
+				"path": path.resolve( __dirname, "../test.dna" ),
+			    },
+			}]
+		    },
+		    "resources": {},
+		},
 	    });
 
-	    expect( alice.id		).to.equal("test-alice");
-	    expect( alice.actor		).to.equal("alice");
-	    expect( alice.agent		).to.be.an("AgentPubKey");
-	    expect( alice.client	).to.be.an("AgentClient");
+	    const { happ1, happ2, happ3 }	= alice;
 
-	    expect( alice.cells.test.role_name	).to.equal("test");
-	    expect( alice.cells.test.id[0]	).to.be.a("DnaHash");
-	    expect( alice.cells.test.id[1]	).to.be.a("AgentPubKey");
-	    expect( alice.cells.test.source	).to.be.a("string");
+	    expect( happ1.id			).to.equal("happ1-alice");
+	    expect( happ1.actor			).to.equal("alice");
+	    expect( happ1.agent			).to.be.an("AgentPubKey");
+	    expect( happ1.client		).to.be.an("AgentClient");
+	    expect( happ1.source		).to.be.a("string");
 
-	    expect( alice.cells.test.dna		).to.be.a("DnaHash");
-	    expect( alice.cells.test.agent		).to.be.a("AgentPubKey");
-	    expect( alice.cells.test.granted_functions	).to.equal("*");
+	    expect( happ1.cells.storage.name	).to.equal("storage");
+	    expect( happ1.cells.storage.id[0]	).to.be.a("DnaHash");
+	    expect( happ1.cells.storage.id[1]	).to.be.a("AgentPubKey");
+	    expect( happ1.cells.storage.dna	).to.be.a("DnaHash");
+	    expect( happ1.cells.storage.agent	).to.be.a("AgentPubKey");
+
+	    expect( happ2.source		).to.be.a("object");
+	    expect( happ2.cells.test_dna.name	).to.equal("test_dna");
+
+	    expect( happ3.source		).to.be.a("object");
+	    expect( happ3.cells.test_dna.name	).to.equal("test_dna");
 	} finally {
 	    await holochain.destroy();
 	}

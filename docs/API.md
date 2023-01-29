@@ -172,26 +172,21 @@ await holochain.destroy();
 ```
 
 
-### `<Holochain>.backdrop( app_id_prefix, app_port, dnas, agents, opts ) -> Promise<object>`
+### `<Holochain>.backdrop( happs, { app_port, actors }) -> Promise<object>`
 A method that will create Agent keys, register DNAs, and install Apps for each Agent.
 
-- `app_id_prefix` - (*required*) used to create app IDs combined with agent names
-  - eg. `<app_id_prefix>-<agent>`
-- `app_port` - (*required*) the port to attach for the app interface
-- `dnas` - (*required*) an object with
-  - `key` - the DNA role ID
-  - `value` - a DNA config object with
-    - `path` - (*required*) the file path for the DNA package
-    - `zomes` - (*required*) a zome/function config that will be used to create an unrestricted
-      capability grant
-      - `key` - the zome name
-      - `value` - list of function names for the corresponding zome name
-- `agents` - (*optional*) an array of names for agent clients
-  - defaults to `[ "alice" ]`
-- `opts` - manually override settings
-  - `timeout` - a number that is passed forward when creating `AdminWebsocket.connect( url, opts.timeout )`
+- `happs` - (*required*) an object with
+  - `key` - an `app_id_prefix` used to create app IDs combined with agent names
+  - `value` - the hApp input for install app (ie. file path, bundle, or DNA map)
+    - see [`installApp(...)`](https://github.com/mjbrisebois/js-holochain-client/blob/master/docs/API_AdminClient.md) for more details
+    - also excepts a map of role names to DNA file paths
+- Optional
+  - `app_port` - the port to attach for the app interface
+    - defaults to an available port
+  - `actors` - an array of names for agent clients
+    - defaults to `[ "alice" ]`
 
-Returns a Promise that resolves with agent configurations when administrative calls are completed.
+Returns a Promise that resolves with configuration details when setup is completed.
 
 Example usage
 ```javascript
@@ -199,57 +194,93 @@ let holochain = new Holochain();
 
 await holochain.start();
 
-let clients = await holochain.backdrop( "my-app", 44910, {
-    "dna_role_id": {
-        "path": "/some/path/to/dna/file.dna",
-        "zomes": {
-            "zome_name": [ "function_name" ],
-        },
+let actors = await holochain.backdrop({
+    "happ1": "/some/path/to/happ1/file.happ",
+    "happ2": {
+        "happ2_dna1": "/some/path/to/dna/file.dna",
     },
-}, [
-    "alice",
-    "bobby",
-]);
+    "happ3": {
+        "manifest": {
+            "manifest_version": "1",
+            "name": "happ #3",
+            "roles": [{
+                "name": "happ3_dna1",
+                "dna": {
+                    "path": "/some/path/to/dna/file.dna",
+                },
+            }]
+        },
+        "resources": {},
+    },
+});
 
-// Example response (value of 'clients')
+// Example response
 // {
 //     "alice": {
-//         "id": "my-app-alice",
-//         "actor": "alice",
-//         "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
-//         "cells": {
-//             "dna_role_id": {
-//                 "id": [
-//                     new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                     new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
-//                 ],
-//                 "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                 "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
-//                 "source": "/some/path/to/dna/file.dna",
-//                 "zomes": {
-//                     "zome_name": [ "function_name" ]
+//         "happ1": {
+//             "id": "happ1-alice",
+//             "actor": "alice",
+//             "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
+//             "client": new AgentClient(...),
+//             "source": "/some/path/to/happ1/file.happ"
+//             "cells": {
+//                 "happ1_dna1": {
+//                     "name": "happ1_dna1",
+//                     "id": [
+//                         new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
+//                         new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
+//                     ],
+//                     "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
+//                     "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
 //                 }
 //             }
-//         }
-//     },
-//     "bobby": {
-//         "id": "my-app-bobby",
-//         "actor": "bobby",
-//         "agent": new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP"),
-//         "cells": {
-//             "dna_role_id": {
-//                 "id": [
-//                     new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                     new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP")
-//                 ],
-//                 "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                 "agent": new AgentPubKey("uhCAkst6fYsuBhuKnOaA2dUd6IDm0WIHqZTUpuB1tfRtS_PcFqCYP"),
-//                 "source": "/some/path/to/dna/file.dna",
-//                 "zomes": {
-//                     "zome_name": [ "function_name" ]
+//         },
+//         "happ2": {
+//             "id": "happ2-alice",
+//             ...
+//             "source": {
+//                 "manifest": {
+//                     "manifest_version": "1",
+//                     "name": "happ2",
+//                     "roles": [{
+//                         "name": "happ2_dna1",
+//                         "dna": {
+//                             "path": "/some/path/to/dna/file.dna",
+//                         },
+//                     }]
+//                 },
+//                 "resources": {},
+//             },
+//             "cells": {
+//                 "happ2_dna1": {
+//                     "name": "happ2_dna1",
+//                     ...
 //                 }
 //             }
-//         }
+//         },
+//         "happ3": {
+//             "id": "happ3-alice",
+//             ...
+//             "source": {
+//                 "manifest": {
+//                     "manifest_version": "1",
+//                     "name": "happ #3",
+//                     "roles": [{
+//                         "name": "happ3_dna1",
+//                         "dna": {
+//                             "path": "/some/path/to/dna/file.dna",
+//                         },
+//                     }]
+//                 },
+//                 "resources": {},
+//             },
+//             "cells": {
+//                 "happ3_dna1": {
+//                     "name": "happ3_dna1",
+//                     ...
+//                 }
+//             }
+//         },
 //     }
 // }
 ```

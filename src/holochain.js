@@ -8,6 +8,7 @@ global.WebSocket			= require('ws');
 const fs				= require('fs');
 const YAML				= require('yaml');
 const EventEmitter			= require('events');
+const getAvailablePort			= require('get-port');
 const { execSync }			= require('child_process');
 const { SubProcess,
 	TimeoutError }			= require('@whi/subprocess');
@@ -29,6 +30,7 @@ const HOLOCHAIN_DEFAULTS		= {
     "default_loggers": false,
     "default_stdout_loggers": false,
     "default_stderr_loggers": false,
+    "timeout": 10_000,
     "clientConstructor": ( agent, roles, app_port ) => {
 	const client			= new AgentClient( agent, roles, app_port );
 	all_clients.push( client );
@@ -275,6 +277,11 @@ class Holochain extends EventEmitter {
 
 	await this.conductor.output("Conductor ready", 15_000 );
 
+	const ports			= this.adminPorts();
+	this.admin			= new AdminClient( ports[0], {
+	    "timeout": this.options.timeout,
+	});
+
 	log.normal("Conductor is ready...");
 	this._ready_fulfill();
     }
@@ -288,6 +295,9 @@ class Holochain extends EventEmitter {
     }
 
     async stop () {
+	if ( this.admin )
+	    await this.admin.close();
+
 	log.debug("Stopping lair (%s) and conductor (%s)", !!this.lair, !!this.conductor );
 	return await Promise.all([
 	    this.lair
@@ -356,81 +366,78 @@ class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    async backdrop ( app_id_prefix, app_port, dnas, agents = [ "alice" ], opts = {} ) {
-	const ports			= this.adminPorts();
-	log.debug("Waiting for Admin client to connect @ ws://localhost:%s", ports[0] );
-	const admin			= new AdminClient( ports[0], {
-	    "timeout": opts.timeout || 10_000,
-	});
+    async setupApp ( app_port, app_id_prefix, actor, happ_input ) {
+	const agent			= await this.admin.generateAgent();
+	const app_id			= `${app_id_prefix}-${actor}`;
 
-	log.debug("Attaching app interface to port %s", app_port );
-	await admin.attachAppInterface( app_port );
+	log.debug("Installing app '%s' for agent %s...", app_id, actor );
+	const installation		= await this.admin.installApp( app_id, agent, happ_input );
 
-	const dna_map			= {};
-	for ( let role_name in dnas ) {
-	    if ( typeof dnas[ role_name ] === "string" ) {
-		dnas[ role_name ]	= {
-		    "path":	dnas[ role_name ],
-		    "granted_functions":	"*",
-		}
-	    }
+	log.debug("Activating app '%s' for agent %s...", app_id, actor );
+	await this.admin.enableApp( app_id );
 
-	    if ( dnas[ role_name ].path === undefined )
-		throw new TypeError(`Missing path in backdrop DNA config for role '${role_name}'`);
+	const dnas			= {};
+	const cells			= {};
 
-	    dna_map[ role_name ]	= dnas[ role_name ].path;
+	for ( let role_name in installation.roles ) {
+	    const cell_info		= installation.roles[ role_name ];
+	    const agent_hash		= cell_info.cell_id[1];
+	    const dna_hash		= cell_info.cell_id[0];
+
+	    dnas[ role_name ]		= dna_hash;
+	    cells[ role_name ]		= {
+		"name": role_name,
+		"id": cell_info.cell_id,
+		"dna": dna_hash,
+		"agent": agent_hash,
+	    };
+
+	    await this.admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, "*" );
 	}
 
-	log.debug("Generating hApp bundle from DNAs...");
-	const happ_bundle_bytes		= await create_happ_bundle( app_id_prefix, dna_map );
+	return {
+	    "id": app_id,
+	    "agent": agent,
+	    "actor": actor,
+	    "dnas": dnas,
+	    "cells": cells,
+	    "app_port": app_port,
+	    "client": this.options.clientConstructor( agent, dnas, app_port ),
+	    "source": happ_input,
+	};
+    }
 
-	log.debug("Creating agents and installing apps...");
-	const agent_list		= await Promise.all( agents.map(async ( actor ) => {
-	    const pubkey		= await admin.generateAgent();
-	    const app_id		= `${app_id_prefix}-${actor}`;
+    async backdrop ( happs, options = {  actors: [ "alice" ] }) {
+	const app_port			= options.app_port || await getAvailablePort();
 
-	    log.debug("Installing app '%s' for agent %s...", app_id, actor );
-	    const installation		= await admin.installApp( app_id, pubkey, happ_bundle_bytes );
+	log.debug("Attaching app interface to port %s", app_port );
+	await this.admin.attachAppInterface( app_port );
 
-	    log.debug("Activating app '%s' for agent %s...", app_id, actor );
-	    await admin.enableApp( app_id );
+	const agents			= {};
+	for ( let actor of options.actors ) {
+	    const installs		= {};
 
-	    for ( let role_name in dnas ) {
-		const agent_hash	= installation.roles[ role_name ].cell_id[1];
-		const dna_hash		= installation.roles[ role_name ].cell_id[0];
+	    for ( let app_id_prefix in happs ) {
+		let happ_input		= happs[ app_id_prefix ];
 
-		await admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, dnas[ role_name ].granted_functions );
+		// A config object that doesn't have the bundle properties is assumed to be a map of
+		// DNA bundle paths.
+		if ( typeof happ_input !== "string" &&
+		     !( typeof happ_input.manifest === "object" &&
+			typeof happ_input.resources === "object" )
+		   ) {
+		    log.debug("Generating hApp bundle from DNAs...");
+		    happ_input		= await create_happ_bundle( app_id_prefix, happ_input );
+		}
+
+		log.debug("Setup app '%s' for agent %s...", app_id_prefix, actor );
+		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, happ_input );
 	    }
 
-	    const roles			= Object.entries( installation.roles )
-		  .reduce( (acc, [role_name, cell_info]) => {
-		      acc[ role_name ]	= cell_info.cell_id[0];
-		      return acc;
-		  }, {});
+	    agents[ actor ]		= installs;
+	}
 
-	    return {
-		"id": app_id,
-		"actor": actor,
-		"agent": pubkey,
-		"cells": Object.entries( installation.roles ).reduce( (acc, [role_name, cell_info]) => {
-		    acc[ role_name ]		= {
-			"role_name": role_name,
-			"id": cell_info.cell_id,
-			"dna": cell_info.cell_id[0],
-			"agent": pubkey,
-			"source": dnas[ role_name ].path,
-			"granted_functions": dnas[ role_name ].granted_functions,
-		    };
-		    return acc;
-		}, {}),
-		"client": this.options.clientConstructor( pubkey, roles, app_port ),
-	    };
-	}) );
-
-	return agent_list.reduce( (acc, happ) => {
-	    acc[happ.actor]		= happ;
-	    return acc;
-	}, {});
+	return agents;
     }
 }
 
