@@ -52,7 +52,6 @@ function basic_tests () {
 	});
 
 	try {
-	    await holochain.start();
 	    const { alice }		= await holochain.backdrop({
 		"happ1": path.resolve( __dirname, "../test.happ" ),
 		"happ2": {

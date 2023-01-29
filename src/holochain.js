@@ -408,6 +408,10 @@ class Holochain extends EventEmitter {
     }
 
     async backdrop ( happs, options = {  actors: [ "alice" ] }) {
+	// Start holochain if it is not already started
+	if ( !this.conductor )
+	    await this.start();
+
 	const app_port			= options.app_port || await getAvailablePort();
 
 	log.debug("Attaching app interface to port %s", app_port );
