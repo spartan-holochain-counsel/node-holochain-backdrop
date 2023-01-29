@@ -65,6 +65,9 @@ function basic_tests () {
 			    "name": "test_dna",
 			    "dna": {
 				"path": path.resolve( __dirname, "../test.dna" ),
+				"modifiers": {
+				    "network_seed": "1",
+				},
 			    },
 			}]
 		    },
@@ -91,6 +94,8 @@ function basic_tests () {
 
 	    expect( happ3.source		).to.be.a("object");
 	    expect( happ3.cells.test_dna.name	).to.equal("test_dna");
+
+	    expect( happ1.agent			).to.deep.equal( happ2.agent );
 	} finally {
 	    await holochain.destroy();
 	}

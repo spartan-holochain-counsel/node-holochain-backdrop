@@ -366,8 +366,7 @@ class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    async setupApp ( app_port, app_id_prefix, actor, happ_input ) {
-	const agent			= await this.admin.generateAgent();
+    async setupApp ( app_port, app_id_prefix, actor, agent, happ_input ) {
 	const app_id			= `${app_id_prefix}-${actor}`;
 
 	log.debug("Installing app '%s' for agent %s...", app_id, actor );
@@ -419,6 +418,7 @@ class Holochain extends EventEmitter {
 
 	const agents			= {};
 	for ( let actor of options.actors ) {
+	    const agent			= await this.admin.generateAgent();
 	    const installs		= {};
 
 	    for ( let app_id_prefix in happs ) {
@@ -435,7 +435,7 @@ class Holochain extends EventEmitter {
 		}
 
 		log.debug("Setup app '%s' for agent %s...", app_id_prefix, actor );
-		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, happ_input );
+		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input );
 	    }
 
 	    agents[ actor ]		= installs;
