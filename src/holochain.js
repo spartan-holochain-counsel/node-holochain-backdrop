@@ -10,8 +10,9 @@ const YAML				= require('yaml');
 const EventEmitter			= require('events');
 const getAvailablePort			= require('get-port');
 const { execSync }			= require('child_process');
-const { SubProcess,
-	TimeoutError }			= require('@whi/subprocess');
+const { SubProcess }			= require('@whi/subprocess');
+const { PromiseTimeout,
+	TimeoutError }			= require('@whi/promise-timeout');
 const { HoloHash }			= require('@whi/holo-hash');
 const { AdminClient,
 	AgentClient }			= require('@whi/holochain-client');
@@ -43,6 +44,12 @@ function exit_cleanup () {
     all_clients.forEach( client => client.close() );
 }
 process.once("exit", exit_cleanup );
+
+async function timed ( fn ) {
+    const start				= Date.now();
+    await fn();
+    return Date.now() - start;
+}
 
 
 class Holochain extends EventEmitter {
@@ -193,97 +200,113 @@ class Holochain extends EventEmitter {
 	return this.configured;
     }
 
-    async start () {
-	if ( this.conductor )
-	    throw new Error(`Tried to start Conductor when is was already started`);
+    start ( timeout = 60_000 ) {
+	const start_time		= Date.now();
 
-	await this.setup();
-
-	const lair_config_path		= path.join( this.config.keystore.keystore_path, "lair-keystore-config.yaml" );
-	if ( ! fs.existsSync( lair_config_path ) ) {
-	    log.normal("Initializing lair-keystore because config (%s) did not exist", lair_config_path );
-	    let output			= execSync(`lair-keystore -r ${this.config.keystore.keystore_path} init -p`, {
-		"input": "",
-		"encoding": "utf8",
-	    });
+	function elapsed () {
+	    return Date.now() - start_time;
 	}
 
-	const lair_config_yaml		= fs.readFileSync( lair_config_path, "utf8" );
-	const lair_config		= YAML.parse( lair_config_yaml );
+	function remaining_time () {
+	    return timeout - elapsed();
+	}
 
-	this.config.keystore.connection_url = lair_config.connectionUrl;
+	return new PromiseTimeout( async (f,r) => {
+	    if ( this.conductor )
+		throw new Error(`Tried to start Conductor when is was already started`);
 
-	log.info("Writing config file to: %s", this.config_file );
-	fs.writeFileSync(
-	    this.config_file,
-	    YAML.stringify(this.config),
-	    "utf8"
-	);
+	    await this.setup();
 
-	log.info("Starting lair-keystore subprocess with debug level: %s", this.options.lair_log );
-	this.lair			= new SubProcess({
-	    "name": "Lair Keystore Process",
-	    "command": [ "lair-keystore", "-r", this.config.keystore.keystore_path, "server", "-p" ],
-	    "x_env": {
-		"RUST_LOG": this.options.lair_log,
-	    },
-	    "input": "",
-	});
+	    const lair_config_path	= path.join( this.config.keystore.keystore_path, "lair-keystore-config.yaml" );
+	    if ( ! fs.existsSync( lair_config_path ) ) {
+		log.normal("Initializing lair-keystore because config (%s) did not exist", lair_config_path );
+		let output		= execSync(`lair-keystore -r ${this.config.keystore.keystore_path} init -p`, {
+		    "input": "",
+		    "encoding": "utf8",
+		});
+	    }
 
-	this.lair.stdout( line => {
-	    let parts			= dissect_rust_log( line );
-	    this.emit("lair:stdout", parts.line, parts );
-	});
+	    const lair_config_yaml	= fs.readFileSync( lair_config_path, "utf8" );
+	    const lair_config		= YAML.parse( lair_config_yaml );
 
-	this.lair.stderr( line => {
-	    let parts			= dissect_rust_log( line );
-	    this.emit("lair:stderr", parts.line, parts );
-	});
+	    this.config.keystore.connection_url = lair_config.connectionUrl;
 
-	log.debug("Sending input to %s (writable: %s)", this.lair.toString(), this.lair._process.stdin.writable );
-	this.lair._process.stdin.end("\n");
+	    log.info("Writing config file to: %s", this.config_file );
+	    fs.writeFileSync(
+		this.config_file,
+		YAML.stringify(this.config),
+		"utf8"
+	    );
 
-	await this.lair.ready( 4_000 );
-	log.debug("Started Lair subprocess with PID: %s", this.lair.pid );
+	    log.info("Starting lair-keystore subprocess with debug level: %s", this.options.lair_log );
+	    this.lair			= new SubProcess({
+		"name": "Lair Keystore Process",
+		"command": [ "lair-keystore", "-r", this.config.keystore.keystore_path, "server", "-p" ],
+		"x_env": {
+		    "RUST_LOG": this.options.lair_log,
+		},
+		"input": "",
+	    });
 
-	await this.lair.output("running", 15_000 );
-	log.normal("Lair is ready...");
+	    this.lair.stdout( line => {
+		let parts		= dissect_rust_log( line );
+		this.emit("lair:stdout", parts.line, parts );
+	    });
 
+	    this.lair.stderr( line => {
+		let parts		= dissect_rust_log( line );
+		this.emit("lair:stderr", parts.line, parts );
+	    });
 
-	log.info("Starting conductor subprocess with debug level: %s", this.options.conductor_log );
-	this.conductor			= new SubProcess({
-	    "name": "Holochain Conductor",
-	    "command": [ "holochain", "-p", "-c", this.config_file ],
-	    "x_env": {
-		"RUST_LOG": this.options.conductor_log,
-	    },
-	});
+	    log.debug("Sending input to %s (writable: %s)", this.lair.toString(), this.lair._process.stdin.writable );
+	    this.lair._process.stdin.end("\n");
 
-	this.conductor.stdout( line => {
-	    let parts			= dissect_rust_log( line );
-	    this.emit("conductor:stdout", parts.line, parts );
-	});
+	    await this.lair.ready( remaining_time() );
+	    log.debug("Started Lair subprocess with PID: %s", this.lair.pid );
+	    log.debug("%s seconds elapsed", elapsed()/1000 );
 
-	this.conductor.stderr( line => {
-	    let parts			= dissect_rust_log( line );
-	    this.emit("conductor:stderr", parts.line, parts );
-	});
+	    await this.lair.output("running", remaining_time() );
+	    log.normal("Lair is ready...");
+	    log.debug("%s seconds elapsed", elapsed()/1000 );
 
-	log.debug("Sending input to %s (writable: %s)", this.conductor.toString(), this.conductor._process.stdin.writable );
-	this.conductor._process.stdin.end("\n");
+	    log.info("Starting conductor subprocess with debug level: %s", this.options.conductor_log );
+	    this.conductor			= new SubProcess({
+		"name": "Holochain Conductor",
+		"command": [ "holochain", "-p", "-c", this.config_file ],
+		"x_env": {
+		    "RUST_LOG": this.options.conductor_log,
+		},
+	    });
 
-	await this.conductor.ready( 4_000 );
-	log.debug("Started Conductor subprocess with PID: %s", this.conductor.pid );
+	    this.conductor.stdout( line => {
+		let parts		= dissect_rust_log( line );
+		this.emit("conductor:stdout", parts.line, parts );
+	    });
 
-	await this.conductor.output("Conductor ready", 15_000 );
+	    this.conductor.stderr( line => {
+		let parts		= dissect_rust_log( line );
+		this.emit("conductor:stderr", parts.line, parts );
+	    });
 
-	const ports			= this.adminPorts();
-	this.admin			= new AdminClient( ports[0], {
-	    "timeout": this.options.timeout,
-	});
+	    log.debug("Sending input to %s (writable: %s)", this.conductor.toString(), this.conductor._process.stdin.writable );
+	    this.conductor._process.stdin.end("\n");
 
-	log.normal("Conductor is ready...");
-	this._ready_fulfill();
+	    await this.conductor.ready( remaining_time() );
+	    log.debug("Started Conductor subprocess with PID: %s", this.conductor.pid );
+	    log.debug("%s seconds elapsed", elapsed()/1000 );
+
+	    await this.conductor.output("Conductor ready", remaining_time() );
+	    log.debug("%s seconds elapsed", elapsed()/1000 );
+
+	    const ports			= this.adminPorts();
+	    this.admin			= new AdminClient( ports[0], {
+		"timeout": this.options.timeout,
+	    });
+
+	    log.normal("Conductor is ready...");
+	    this._ready_fulfill();
+	    f();
+	}, timeout, "start Holochain" );
     }
 
     ready () {

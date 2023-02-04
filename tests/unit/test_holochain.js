@@ -3,6 +3,7 @@ const log				= require('@whi/stdlog')(path.basename( __filename ), {
     level: process.env.LOG_LEVEL || 'fatal',
 });
 
+// const why				= require('why-is-node-running');
 const expect				= require('chai').expect;
 const { AgentClient }			= require('@whi/holochain-client');
 const { Holochain }			= require('../../src/index.js');
@@ -117,10 +118,28 @@ function errors_tests () {
 	    failed			= true;
 
 	    expect( err.message		).to.have.string("must specify the config path");
+	} finally {
+	    await holochain.destroy();
+	}
+	expect( failed			).to.be.true;
+    });
+
+    it("should fail to start because of timeout", async () => {
+	let holochain			= new Holochain();
+
+	let failed			= false;
+	try {
+	    await holochain.start( 1 );
+	} catch (err) {
+	    failed			= true;
+
+	    expect( err.message		).to.have.string("Failed to start Holochain within");
+	} finally {
+	    await holochain.destroy();
 	}
 	expect( failed			).to.be.true;
 
-	await holochain.destroy();
+	// setTimeout( () => why(), 1_000 );
     });
 }
 

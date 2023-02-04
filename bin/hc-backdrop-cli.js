@@ -105,6 +105,7 @@ async function main ( args, callback ) {
 	.option("-q, --quiet", "suppress all printing except for final result", false )
 	.option("-p, --admin-port <port>", "set the admin port that will be saved in Conductor's config", parseInt )
 	.option("-c, --config <path>", "set the config path (it will be generated if file does not exist)" )
+	.option("-t, --timeout <timeout>", "set timeout for Holochain start-up (default 60 seconds)" )
 	.hook("preAction", async function ( self, action ) {
 	    const options		= self.opts();
 
@@ -143,6 +144,7 @@ async function main ( args, callback ) {
 		    "admin_port": options.adminPort,
 		    "path": options.config && path.resolve( process.cwd(), options.config ),
 		},
+		"timeout": options.timeout,
 	    });
 
 	    if ( !quiet ) {
@@ -167,7 +169,7 @@ async function main ( args, callback ) {
 		let base_dir		= await holochain.setup();
 
 		print(`Starting Holochain in "${base_dir}"...`);
-		await holochain.start();
+		await holochain.start( options.timeout );
 
 		await holochain.ready();
 		print(`Holochain is ready`);

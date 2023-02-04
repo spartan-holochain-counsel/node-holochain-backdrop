@@ -102,8 +102,12 @@ holochain.adminPorts();
 ```
 
 
-### `<Holochain>.start() -> Promise<undefined>`
+### `<Holochain>.start( timeout ) -> Promise<undefined>`
 Start the `lair-keystore` and `holochain` subprocesses.
+
+- `timeout` - (*optional*) sets the maximum time in milliseconds for startup
+  - throws a `TimeoutError` if limit is reached
+  - defaults to `60_000` (60 seconds)
 
 Returns a Promise that resolves when the "ready" output is detected for both subprocesses.
 

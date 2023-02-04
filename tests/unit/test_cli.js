@@ -84,11 +84,24 @@ function errors_tests () {
 	}
 	expect( failed			).to.be.true;
     });
+
+    it("should fail because start-up timeout", async function () {
+	let failed			= false;
+	try {
+	    await main( cmd_args( "-t", "1" ), async ( holochain ) => {
+		await holochain.destroy();
+	    });
+	} catch (err) {
+	    failed			= true;
+
+	    expect( err.message		).to.have.string("Failed to start Holochain within");
+	}
+	expect( failed			).to.be.true;
+    });
 }
 
 describe("CLI", () => {
 
     describe("Basic", basic_tests );
     describe("Errors", errors_tests );
-
 });
