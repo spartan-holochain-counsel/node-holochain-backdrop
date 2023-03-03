@@ -34,4 +34,4 @@
 
 | Holochain Version (beta)                                                                         | Commit Date    | Lair Version                                                                                | Holochain Backdrop Version                                                     |
 |--------------------------------------------------------------------------------------------------|----------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| [`v0.1.0`](https://github.com/holochain/holochain/tree/41150668b18a57f4dc801a0b3439c1c76e149064) | *Jan 26, 2023* | [`v0.2.3`](https://github.com/holochain/lair/tree/cbfbefefe43073904a914c8181a450209a74167b) | [`v1.0.2`](https://github.com/mjbrisebois/node-holochain-backdrop/tree/v1.0.2) |
+| [`v0.1.0`](https://github.com/holochain/holochain/tree/41150668b18a57f4dc801a0b3439c1c76e149064) | *Jan 26, 2023* | [`v0.2.3`](https://github.com/holochain/lair/tree/cbfbefefe43073904a914c8181a450209a74167b) | [`v2.0.0`](https://github.com/mjbrisebois/node-holochain-backdrop/tree/v2.0.0) |

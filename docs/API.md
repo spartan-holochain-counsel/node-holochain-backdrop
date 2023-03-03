@@ -40,8 +40,8 @@ Example usage
 let holochain = new Holochain({
     "config": {
         "path": process.cwd() + "/config.yaml",
-        "construct": () => {
-            return Config.generate();
+        async construct () => {
+            return await Config.generate();
         },
         "admin_port": null,
     },
@@ -176,7 +176,7 @@ await holochain.destroy();
 ```
 
 
-### `<Holochain>.backdrop( happs, { app_port, actors }) -> Promise<object>`
+### `<Holochain>.backdrop( happs, { app_port, actors, network_seed }) -> Promise<object>`
 A method that will create Agent keys, register DNAs, and install Apps for each Agent.
 
 - `happs` - (*required*) an object with
@@ -189,6 +189,9 @@ A method that will create Agent keys, register DNAs, and install Apps for each A
     - defaults to an available port
   - `actors` - an array of names for agent clients
     - defaults to `[ "alice" ]`
+  - `network_seed` - a custom network seed when installing the app
+    - defaults to a random hex
+    - specify `null` to clear default
 
 Returns a Promise that resolves with configuration details when setup is completed.
 

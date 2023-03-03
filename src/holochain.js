@@ -132,7 +132,7 @@ class Holochain extends EventEmitter {
 		if ( !this.options.config.path )
 		    throw new Error(`You must specify the config path if you use a config constructor`);
 
-		this.config		= this.options.config.construct();
+		this.config		= await this.options.config.construct.call(this);
 
 		log.warn("Flag for config cleanup");
 		this._cleanup_config	= true;
@@ -389,11 +389,13 @@ class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    async setupApp ( app_port, app_id_prefix, actor, agent, happ_input ) {
+    async setupApp ( app_port, app_id_prefix, actor, agent, happ_input, options ) {
 	const app_id			= `${app_id_prefix}-${actor}`;
 
 	log.debug("Installing app '%s' for agent %s...", app_id, actor );
-	const installation		= await this.admin.installApp( app_id, agent, happ_input );
+	const installation		= await this.admin.installApp( app_id, agent, happ_input, {
+	    "network_seed": options.network_seed,
+	});
 
 	log.debug("Activating app '%s' for agent %s...", app_id, actor );
 	await this.admin.enableApp( app_id );
@@ -429,7 +431,14 @@ class Holochain extends EventEmitter {
 	};
     }
 
-    async backdrop ( happs, options = {  actors: [ "alice" ] }) {
+    async backdrop ( happs, opts = {}) {
+	const options			= Object.assign({}, {
+	    "actors": [ "alice" ],
+	    "network_seed": Math.random().toString(16).slice(-12),
+	}, opts );
+
+	await this.configued;
+
 	// Start holochain if it is not already started
 	if ( !this.conductor )
 	    await this.start();
@@ -458,7 +467,9 @@ class Holochain extends EventEmitter {
 		}
 
 		log.debug("Setup app '%s' for agent %s...", app_id_prefix, actor );
-		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input );
+		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input, {
+		    "network_seed": options.network_seed,
+		});
 	    }
 
 	    agents[ actor ]		= installs;
