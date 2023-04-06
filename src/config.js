@@ -19,6 +19,16 @@ const DEFAULT_NETWORK_CONFIG		= {
     "transport_pool": [{
 	"type": TRANSPORT_QUIC,
     }],
+    // "transport_pool": [{
+    // 	"type": TRANSPORT_PROXY,
+    // 	"proxy_config": {
+    //         "proxy_url": "kitsune-proxy://f3gH2VMkJ4qvZJOXx0ccL_Zo5n-s_CnBjSzAsEHHDCA/kitsune-quic/h/137.184.142.208/p/5788/--",
+    //         "type": "remote_proxy_client",
+    // 	},
+    // 	"sub_transport": {
+    //         "type": TRANSPORT_QUIC,
+    // 	},
+    // }],
 }
 
 

@@ -14,6 +14,24 @@ function sanitize_str ( str ) {
 }
 
 
+function column_eclipse_right ( str, length, align = "left" ) {
+    if ( typeof str !== "string" )
+	str				= "";
+
+    return align === "left"
+	? eclipse_right( str, length ).padEnd( length, " ")
+	: eclipse_right( str, length ).padStart( length, " ");
+}
+
+function column_eclipse_left ( str, length, align = "right" ) {
+    if ( typeof str !== "string" )
+	str				= "";
+
+    return align === "right"
+	? eclipse_left( str, length ).padStart( length, " ")
+	: eclipse_left( str, length ).padEnd( length, " ");
+}
+
 function eclipse_right ( str, length ) {
     str					= sanitize_str( str );
 
@@ -37,90 +55,101 @@ function eclipse_left ( str, length ) {
 	return str.slice( 0, length );
 }
 
+function parse_line ( source ) {
+    const text				= sanitize_str( source );
+    const metadata			= {};
 
-function dissect_rust_log ( line ) {
-    let parts				= {
-	"date": new Date(),
-	"level": null,
-	"context": null,
-	"message": line,
-	"multiline": false,
-	line,
-    };
+    let type				= "unknown";
+    let date				= new Date();
+    let level				= null;
+    let group				= null;
+    let location			= null;
+    let message				= null;
 
-    // Shortcut empty lines
-    if ( line.trim() === "" )
-	return parts;
-
-    // If the line starts with whitespace, we assume that this is part of a multiline output
-    if ( line.startsWith(" ")
-	 || line.trim().length === 1 // Catch a closing brace or bracket from debug output
+    if ( text.startsWith(" ")
+	 || text.trim().length === 1 // Catch a closing brace or bracket from debug output
        ) {
-	parts.multiline			= true;
-	return parts;
+	type				= "multiline";
     }
+    // If it doesn't start with a date, then it is a normal printed line
+    else if ( !text.slice(0, 27).match(/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+Z/) ) {
+	type				= "print";
+	level				= "normal";
+	message				= text;
+    }
+    else {
+	// 0                        27 29 33 34
+	// |                         | |   | |
+	// 2023-04-05T23:54:56.267039Z DEBUG ...
+	let msg				= text.slice(34);
+	date				= new Date( text.slice(0, 27) );
+	level				= text.slice( 28, 33 ).toLowerCase().trim();
 
-    try {
-	let date			= line.slice(  4, 23 );
+	if ( msg.startsWith("wasm_trace") ) {
+	    // (\S+)       (\S+)                                     ([0-9]+)
+	    // |           |                                         |  (.*)
+	    // |           |                                         |  |
+	    // wasm_trace: mere_memory_api::handlers:src/handlers.rs:32 Creating entries for remembering (3000000 bytes)
+	    const matches		= msg.match(/(\S+): (\S+):([0-9]+) (.*)/);
 
-	try {
-	    let date_string		= (new Date()).getFullYear() + " " + date;
-	    date			= new Date( date_string );
-	    if ( isNaN( date.getTime() ) )
-		throw new Error(`Invalid date in "${line}"`);
-	} catch (err) {
-	    // console.error(err);
-	    throw err;
+	    type			= "wasm-trace";
+	    level			= "normal";
+	    group			= matches[1];	// wasm_trace
+	    location			= matches[2];	// mere_memory_api::handlers:src/handlers.rs
+	    line_number			= matches[3];	// 32
+	    message			= matches[4];	// Creating entries for remembering (3000000 bytes)
 	}
+	else if ( msg.startsWith("publish_dht_ops_workflow") ) {
+	    // (\S+)                                                                                               (\S+)                                                (\S+)                                                          ([0-9]+)
+	    // |                                                                                                   |                                                    |                                                              |   (.*)
+	    // |                                                                                                   |                                                    |                                                              |   |
+	    // publish_dht_ops_workflow{agent=AgentPubKey(uhCAkIsrrEt9Pe83lfp4a_LqGV_w9FvUmRQEk4k0Vky-Q8ckVo5L5)}: holochain::core::workflow::publish_dht_ops_workflow: crates/holochain/src/core/workflow/publish_dht_ops_workflow.rs:46: publishing to 11 nodes
+	    const matches		= msg.match(/(\S+): (\S+): (\S+):([0-9]+): (.*)/);
 
-	let level			= line.slice( 28, 38 );
-	let msg				= line.slice( 43 );
+	    type			= "dht-opts"
+	    group			= matches[2];	// holochain::core::workflow::publish_dht_ops_workflow
+	    location			= matches[3];	// crates/holochain/src/core/workflow/publish_dht_ops_workflow.rs
+	    line_number			= matches[4];	// 46
+	    message			= matches[5];	// publishing to 11 nodes
 
-	let context			= `?`;
-	let msg_parts			= msg.split(" ");
-
-
-	if ( msg_parts[0].includes("wasm_trace") ) {
-	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
-	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
-
-	    level			= "NORMAL";
-	    context			= `(${group}) ${location}`;
-	    msg				= msg_parts.slice(2).join(" ");
-	}
-	else if ( !msg_parts[0].slice(0,-1).includes(":") && msg_parts[1] && msg_parts[1].includes("::") ) {
-	    // Feb 28 13:47:41.144  INFO										// 43 characters
-	    // publish_dht_ops_workflow{agent=AgentPubKey(uhCAk3O9tjVpZzUzCjZTnRQR-HBHzrnLDOQVvjvp_brKS8zBsYH36)}:	// msg_parts[0]
-	    // holochain::core::workflow::publish_dht_ops_workflow:							// msg_parts[1]
-	    // committed sent ops											// msg_parts.slice(2).join(" ")
-	    if ( msg_parts[0].includes("publish_dht_ops_workflow") ) {
-		msg_parts[0]		= msg_parts[0].slice( 59, 59+53 );
-	    }
-
-	    let group			= eclipse_right( sanitize_str( msg_parts[0] ).slice(0, -1), 22 );
-	    let location		= eclipse_left( msg_parts[1], Math.max(45 - group.length, 1) );
-
-	    context			= `(${group}) ${location}`;
-	    msg				= msg_parts.slice(2).join(" ");
-	}
-	else if ( msg_parts[0].endsWith(":") ) {
-	    let location		= eclipse_left( msg_parts[0], 48 );
-	    context			= `${location}`
-	    msg				= msg_parts.slice(1).join(" ");
+	    //                                            43                                                 -3
+	    //                                            |                                                   |
+	    // publish_dht_ops_workflow{agent=AgentPubKey(uhCAkIsrrEt9Pe83lfp4a_LqGV_w9FvUmRQEk4k0Vky-Q8ckVo5L5)}
+	    metadata.agent		= matches[1].slice( 43, -3 );
 	}
 	else {
-	    msg				= msg_parts.join(" ");
-	}
+	    // (\S+)      (\S+)                                      ([0-9]+)
+	    // |          |                                          |   (.*)
+	    // |          |                                          |   |
+	    // holochain: crates/holochain/src/bin/holochain/main.rs:96: Conductor successfully initialized.
+	    const matches		= msg.match(/(\S+): (\S+):([0-9]+): (.*)/);
 
-	parts.date			= date;
-	parts.level			= level.replace(strip_escape_codes, "").trim().toUpperCase();
-	parts.context			= context;
-	parts.message			= msg;
-	parts.line			= `\x1b[22;37m${date.toISOString()}\x1b[35m ${parts.level.slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context.padEnd(48)}\x1b[39m | \x1b[0m${eclipse_right(msg, 2000)}\x1b[0m`;
-    } catch (err) {
-	// log.silly("Failed to dissect Rust log: %s", line );
-    } finally {
-	return parts;
+	    if ( matches ) {
+		type			= "group-location";
+		group			= matches[1];	// holochain
+		location		= matches[2];	// crates/holochain/src/bin/holochain/main.rs
+		line_number		= matches[3];	// 96
+		message			= matches[4];	// Conductor successfully initialized.
+	    }
+	}
+    }
+
+    const context			= group
+	  ? `(${eclipse_right(group, 22)}) ${column_eclipse_left(location, 45-(Math.min(group.length, 22)))}`
+	  : `${column_eclipse_left(location, 48)}`;
+
+    return {
+	type,
+	source,
+	text,
+	date,
+	level,
+	group,
+	location,
+	context,
+	message,
+	metadata,
+	"formatted": `\x1b[35;22m${date.toISOString()} \x1b[39m${level.toUpperCase().slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context}\x1b[39m | \x1b[0m${eclipse_right(message, 2000)}\x1b[0m`,
     }
 }
 
@@ -142,6 +171,8 @@ module.exports = {
     sanitize_str,
     eclipse_right,
     eclipse_left,
-    dissect_rust_log,
+    column_eclipse_right,
+    column_eclipse_left,
+    parse_line,
     mktmpdir,
 };

@@ -17,7 +17,9 @@ const { HoloHash }			= require('@whi/holo-hash');
 const { AdminClient,
 	AgentClient }			= require('@whi/holochain-client');
 
-const { dissect_rust_log,
+const { parse_line,
+	column_eclipse_right,
+	column_eclipse_left,
 	mktmpdir }			= require('./utils.js');
 const { generate }			= require('./config.js');
 
@@ -36,6 +38,9 @@ const HOLOCHAIN_DEFAULTS		= {
 	const client			= new AgentClient( agent, roles, app_port );
 	all_clients.push( client );
 	return client;
+    },
+    get name () {
+	return Math.random().toString(16).slice(-12);
     },
 };
 
@@ -60,6 +65,7 @@ class Holochain extends EventEmitter {
 	process.once("exit", this._exit_handler );
 
 	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
+	this.options.name		= this.options.name.slice(0,8);
 	this.basedir			= null;
 
 	this._cleanup_config		= false;
@@ -89,30 +95,34 @@ class Holochain extends EventEmitter {
 	if ( this.options.default_stdout_loggers === true ) {
 	    log.silly("Adding default stdout line event logging hooks");
 	    this.on("lair:stdout", (line, parts) => {
-		if ( parts.multiline )
-		    console.log( "\x1b[39;1m     Lair STDOUT:\x1b[0m %s\x1b[0m", line );
+		if ( parts.type === "multiline" )
+		    console.log( "\x1b[33;1m[%s]      Lair STDOUT:\x1b[0m %s\x1b[0m", this.id, line );
+		else if ( parts.type === "print" )
+		    console.log( "\x1b[33;1m[%s]      Lair STDOUT:\x1b[37;22m %s\x1b[0m", this.id, parts.message );
 		else
-		    console.log( "\x1b[39;1m     Lair STDOUT:\x1b[37;22m %s\x1b[0m", line );
+		    console.log( "\x1b[33;1m[%s]      Lair STDOUT:\x1b[37;22m %s\x1b[0m", this.id, line );
 	    });
 
 	    this.on("conductor:stdout", (line, parts) => {
-		if ( parts.multiline )
-		    console.log( "\x1b[39;1mConductor STDOUT:\x1b[0m %s\x1b[0m", line );
+		if ( parts.type === "multiline" )
+		    console.log( "\x1b[33;1m[%s] Conductor STDOUT:\x1b[0m %s\x1b[0m", this.id, line );
+		else if ( parts.type === "print" )
+		    console.log( "\x1b[33;1m[%s] Conductor STDOUT:\x1b[37;22m %s\x1b[0m", this.id, parts.message );
 		else
-		    console.log( "\x1b[39;1mConductor STDOUT:\x1b[37;22m %s\x1b[0m", line );
+		    console.log( "\x1b[33;1m[%s] Conductor STDOUT:\x1b[0m %s\x1b[0m", this.id, line );
 	    });
 
 	}
 	if ( this.options.default_stderr_loggers === true ) {
 	    log.silly("Adding default stderr line event logging hooks");
 	    this.on("lair:stderr", (line, parts) => {
-		console.log( "\x1b[31;1m     Lair STDERR:\x1b[0m %s\x1b[0m", line );
+		console.log( "\x1b[31;1m[%s]      Lair STDERR:\x1b[0m %s\x1b[0m", this.id, line );
 	    });
 
 	    this.on("conductor:stderr", (line, parts) => {
 		if ( line.includes("func_translator") )
 		    return;
-		console.log( "\x1b[31;1mConductor STDERR:\x1b[0m %s\x1b[0m", line );
+		console.log( "\x1b[31;1m[%s] Conductor STDERR:\x1b[0m %s\x1b[0m", this.id, line );
 	    });
 	}
     }
@@ -249,13 +259,13 @@ class Holochain extends EventEmitter {
 	    });
 
 	    this.lair.stdout( line => {
-		let parts		= dissect_rust_log( line );
-		this.emit("lair:stdout", parts.line, parts );
+		let parts		= parse_line( line );
+		this.emit("lair:stdout", parts.formatted, parts );
 	    });
 
 	    this.lair.stderr( line => {
-		let parts		= dissect_rust_log( line );
-		this.emit("lair:stderr", parts.line, parts );
+		let parts		= parse_line( line );
+		this.emit("lair:stderr", parts.formatted, parts );
 	    });
 
 	    log.debug("Sending input to %s (writable: %s)", this.lair.toString(), this.lair._process.stdin.writable );
@@ -279,13 +289,13 @@ class Holochain extends EventEmitter {
 	    });
 
 	    this.conductor.stdout( line => {
-		let parts		= dissect_rust_log( line );
-		this.emit("conductor:stdout", parts.line, parts );
+		let parts		= parse_line( line );
+		this.emit("conductor:stdout", parts.formatted, parts );
 	    });
 
 	    this.conductor.stderr( line => {
-		let parts		= dissect_rust_log( line );
-		this.emit("conductor:stderr", parts.line, parts );
+		let parts		= parse_line( line );
+		this.emit("conductor:stderr", parts.formatted, parts );
 	    });
 
 	    log.debug("Sending input to %s (writable: %s)", this.conductor.toString(), this.conductor._process.stdin.writable );
@@ -476,6 +486,10 @@ class Holochain extends EventEmitter {
 	}
 
 	return agents;
+    }
+
+    get id () {
+	return this.options.name;
     }
 }
 
