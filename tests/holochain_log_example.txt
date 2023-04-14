@@ -7,6 +7,33 @@ WARNING: running without local db encryption
 2023-04-05T23:54:52.446427Z  WARN holochain::conductor::conductor::builder: crates/holochain/src/conductor/conductor/builder.rs:66: WARNING: running without local db encryption
 2023-04-05T23:54:52.851150Z  INFO holochain_sqlite::schema: crates/holochain_sqlite/src/schema.rs:86: database forward migrated: Conductor from 0 to 1
 2023-04-05T23:54:52.852026Z  INFO holochain_sqlite::schema: crates/holochain_sqlite/src/schema.rs:86: database forward migrated: Wasm from 0 to 0
+2023-04-13T23:50:21.714207Z  INFO kitsune_p2p::spawn::actor::meta_net: crates/kitsune_p2p/kitsune_p2p/src/spawn/actor/meta_net.rs:583: meta net startup tx5
+2023-04-13T23:50:21.714368Z ERROR holochain::conductor::conductor::builder: crates/holochain/src/conductor/conductor/builder.rs:140: Error spawning networking err=OtherKitsuneP2pError(StdIoError(Custom { kind: Other, error: Error: invalid scheme, expected "ws" or "wss", got: "https" }))
+FATAL PANIC PanicInfo {
+    payload: Any { .. },
+    message: Some(
+        Could not initialize Conductor from configuration: HolochainP2pError(OtherKitsuneP2pError(StdIoError(Custom { kind: Other, error: Error: invalid scheme, expected "ws" or "wss", got: "https" }))),
+    ),
+    location: Location {
+        file: "crates/holochain/src/bin/holochain/main.rs",
+        line: 178,
+        col: 21,
+    },
+    can_unwind: true,
+}
+Well, this is embarrassing.
+
+holochain had a problem and crashed. To help us diagnose the problem you can send us a crash report.
+
+We have generated a report file at "/tmp/nix-shell.pAUD8a/report-b207f3c1-4e77-4d12-9ac7-b6c9e810fa13.toml". Submit an issue or email with the subject of "holochain Crash Report" and include the report as an attachment.
+
+- Homepage: https://github.com/holochain/holochain
+- Authors: Holochain Core Dev Team <devcore@holochain.org>
+
+We take privacy seriously, and do not perform any automated error collection. In order to improve the software, we rely on people to submit reports.
+
+Thank you kindly!
+
 2023-04-05T23:54:52.855003Z  INFO kitsune_p2p_transport_quic::tx2: crates/kitsune_p2p/transport_quic/src/tx2.rs:456: bound local endpoint (quic) local_cert=Cert(83Da_6..9ljvvM) url=kitsune-quic://192.168.0.62:47243
 2023-04-05T23:54:52.855113Z  INFO kitsune_p2p_types::tx2::tx2_restart_adapter: crates/kitsune_p2p/types/src/tx2/tx2_restart_adapter.rs:39: tx2_restart_adapter bound Ok(kitsune-quic://192.168.0.62:47243)
 

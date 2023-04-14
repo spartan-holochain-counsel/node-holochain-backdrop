@@ -22,28 +22,31 @@ function basic_tests () {
 		unknown_formats.push( line );
 		console.log( content.type, line );
 	    }
-	    if ( content.type === "print" )
+	    else if ( content.type === "print" )
 		log.normal("\x1b[37m%s\x1b[0m", content.message );
+	    else if ( content.type === "multiline" ) {
+		log.normal("\x1b[37m%s\x1b[0m", content.message );
+	    }
 	    else if ( content.group === null || content.location === null ) {
 		unknown_formats.push( line );
 		console.log( `\x1b[33m${line}\x1b[0m` );
-		console.log(
-		    column_eclipse_right( content.type, 20 ),
-		    content.date,
-		    content.level,
-		    content.text,
-		);
+		// console.log(
+		//     column_eclipse_right( content.type, 20 ),
+		//     content.date,
+		//     content.level,
+		//     content.text,
+		// );
 	    }
 	    else {
-		log.debug( content.formatted, content.metadata );
-		log.silly(
-		    "\x1b[35;22m%s \x1b[0m%s \x1b[0m| \x1b[36;22m%s\x1b[0m | \x1b[39m%s\x1b[0m",
-		    content.date.toISOString(),
-		    content.level.toUpperCase().slice(0,5).padStart(5),
-		    column_eclipse_left( content.context, 48 ),
-		    content.message,
-		    content.metadata,
-		);
+		log[content.level]( content.formatted, content.metadata );
+		// log.silly(
+		//     "\x1b[35;22m%s \x1b[0m%s \x1b[0m| \x1b[36;22m%s\x1b[0m | \x1b[39m%s\x1b[0m",
+		//     content.date.toISOString(),
+		//     content.level.toUpperCase().slice(0,5).padStart(5),
+		//     column_eclipse_left( content.context, 48 ),
+		//     content.message,
+		//     content.metadata,
+		// );
 	    }
 	}
 

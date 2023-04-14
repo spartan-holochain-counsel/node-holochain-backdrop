@@ -10,14 +10,15 @@ const NETWORK_QUICBOOTSTRAP		= "quic_bootstrap";
 const NETWORK_QUICMDNS			= "quic_mdns";
 
 const TRANSPORT_MEM			= "mem";
-const TRANSPORT_QUIC			= "quic";
+const TRANSPORT_WEBRTC			= "webrtc";
 const TRANSPORT_PROXY			= "proxy";
 
 const DEFAULT_NETWORK_CONFIG		= {
     "network_type": NETWORK_QUICBOOTSTRAP,
     "bootstrap_service": "https://devnet-bootstrap.holo.host",
     "transport_pool": [{
-	"type": TRANSPORT_QUIC,
+	"type": TRANSPORT_WEBRTC,
+	"signal_url": "wss://signal.holotest.net/",
     }],
     // "transport_pool": [{
     // 	"type": TRANSPORT_PROXY,
@@ -64,6 +65,6 @@ module.exports = {
     NETWORK_QUICMDNS,
 
     TRANSPORT_MEM,
-    TRANSPORT_QUIC,
+    TRANSPORT_WEBRTC,
     TRANSPORT_PROXY,
 };

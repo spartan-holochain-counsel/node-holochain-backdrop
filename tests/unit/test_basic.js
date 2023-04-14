@@ -12,7 +12,9 @@ function basic_tests () {
     it("should start and stop holochain", async function () {
 	this.timeout( 5_000 );
 
-	let holochain			= new Holochain();
+	let holochain			= new Holochain({
+	    "default_loggers": true,
+	});
 	try {
 	    let base_dir		= await holochain.setup();
 

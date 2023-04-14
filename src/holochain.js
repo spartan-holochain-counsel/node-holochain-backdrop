@@ -293,9 +293,16 @@ class Holochain extends EventEmitter {
 		this.emit("conductor:stdout", parts.formatted, parts );
 	    });
 
+	    const fatal			= [];
 	    this.conductor.stderr( line => {
+		if ( line.includes("FATAL") || fatal.length )
+		    fatal.push( line );
+
 		let parts		= parse_line( line );
 		this.emit("conductor:stderr", parts.formatted, parts );
+
+		if ( line.startsWith("}") || line.includes("Thank you kindly!") )
+		    r( fatal.join("\n") );
 	    });
 
 	    log.debug("Sending input to %s (writable: %s)", this.conductor.toString(), this.conductor._process.stdin.writable );
@@ -348,7 +355,7 @@ class Holochain extends EventEmitter {
 	return this.config.admin_interfaces.map( iface => iface.driver.port );
     }
 
-    async destroy ( exit_code ) {
+    async destroy ( exit_code = "unspecified" ) {
 	log.debug("Destroying Holochain because of %s", exit_code );
 
 	if ( this._destroyed === true )
@@ -465,21 +472,38 @@ class Holochain extends EventEmitter {
 
 	    for ( let app_id_prefix in happs ) {
 		let happ_input		= happs[ app_id_prefix ];
+		let setup_opts		= {};
 
 		// A config object that doesn't have the bundle properties is assumed to be a map of
 		// DNA bundle paths.
-		if ( typeof happ_input !== "string" &&
-		     !( typeof happ_input.manifest === "object" &&
-			typeof happ_input.resources === "object" )
-		   ) {
-		    log.debug("Generating hApp bundle from DNAs...");
-		    happ_input		= await create_happ_bundle( app_id_prefix, happ_input );
+		if ( typeof happ_input !== "string" ) {
+		    if ( typeof happ_input.manifest === "object" &&
+			 typeof happ_input.resources === "object" ) {
+			// Do not override network_seed if there is one set in the manifest role DNA
+			// modifiers
+			happ_input.manifest.roles.forEach( role_config => {
+			    if ( !role_config.dna.modifiers ) {
+				role_config.dna.modifiers = {
+				    "network_seed": options.network_seed,
+				};
+			    }
+			    else if ( !role_config.dna.modifiers.network_seed ) {
+				role_config.dna.modifiers.network_seed = options.network_seed;
+			    }
+			});
+		    }
+		    else {
+			log.debug("Generating hApp bundle from DNAs...");
+			happ_input		= await create_happ_bundle( app_id_prefix, happ_input );
+			setup_opts.network_seed	= options.network_seed;
+		    }
+		}
+		else {
+		    setup_opts.network_seed	= options.network_seed;
 		}
 
 		log.debug("Setup app '%s' for agent %s...", app_id_prefix, actor );
-		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input, {
-		    "network_seed": options.network_seed,
-		});
+		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input, setup_opts );
 	    }
 
 	    agents[ actor ]		= installs;

@@ -33,8 +33,6 @@ function column_eclipse_left ( str, length, align = "right" ) {
 }
 
 function eclipse_right ( str, length ) {
-    str					= sanitize_str( str );
-
     if ( length === 0 )
 	return "\u2026";
     if ( str.length > length )
@@ -44,7 +42,6 @@ function eclipse_right ( str, length ) {
 }
 
 function eclipse_left ( str, length ) {
-    str					= sanitize_str( str );
     rlength				= Math.max( length - 1, 1 );
 
     if ( length === 0 )
@@ -61,10 +58,10 @@ function parse_line ( source ) {
 
     let type				= "unknown";
     let date				= new Date();
-    let level				= null;
+    let level				= "error";
     let group				= null;
     let location			= null;
-    let message				= null;
+    let message				= source;
 
     if ( text.startsWith(" ")
 	 || text.trim().length === 1 // Catch a closing brace or bracket from debug output
@@ -137,6 +134,15 @@ function parse_line ( source ) {
     const context			= group
 	  ? `(${eclipse_right(group, 22)}) ${column_eclipse_left(location, 45-(Math.min(group.length, 22)))}`
 	  : `${column_eclipse_left(location, 48)}`;
+    const message_color			= type === "wasm_trace" ? "\x1b[37m" : "\x1b[0m";
+
+    let formatted;
+    try {
+	formatted			= `\x1b[35;22m${date.toISOString()} \x1b[39m${level.toUpperCase().slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context}\x1b[39m | ${message_color}${eclipse_right(message, 2000)}\x1b[0m`;
+    } catch (err) {
+	log.error("Failed to format line '%s' because:", source );
+	console.error( err );
+    }
 
     return {
 	type,
@@ -149,7 +155,7 @@ function parse_line ( source ) {
 	context,
 	message,
 	metadata,
-	"formatted": `\x1b[35;22m${date.toISOString()} \x1b[39m${level.toUpperCase().slice(0,5).padStart(5)}\x1b[39m | \x1b[36m${context}\x1b[39m | \x1b[0m${eclipse_right(message, 2000)}\x1b[0m`,
+	formatted,
     }
 }
 
