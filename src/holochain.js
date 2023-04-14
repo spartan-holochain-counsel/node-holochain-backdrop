@@ -415,7 +415,7 @@ class Holochain extends EventEmitter {
 	});
 
 	log.debug("Activating app '%s' for agent %s...", app_id, actor );
-	await this.admin.enableApp( app_id );
+	const enabled			= await this.admin.enableApp( app_id );
 
 	const dnas			= {};
 	const cells			= {};
@@ -440,6 +440,7 @@ class Holochain extends EventEmitter {
 	    "id": app_id,
 	    "agent": agent,
 	    "actor": actor,
+	    "status": enabled.app.status,
 	    "dnas": dnas,
 	    "cells": cells,
 	    "app_port": app_port,

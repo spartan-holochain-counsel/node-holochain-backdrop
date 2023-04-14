@@ -15,7 +15,6 @@ const TRANSPORT_PROXY			= "proxy";
 
 const DEFAULT_NETWORK_CONFIG		= {
     "network_type": NETWORK_QUICBOOTSTRAP,
-    "bootstrap_service": "https://devnet-bootstrap.holo.host",
     "transport_pool": [{
 	"type": TRANSPORT_WEBRTC,
 	"signal_url": "wss://signal.holotest.net/",

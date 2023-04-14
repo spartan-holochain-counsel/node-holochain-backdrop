@@ -81,6 +81,7 @@ function basic_tests () {
 	    expect( happ1.id			).to.equal("happ1-alice");
 	    expect( happ1.actor			).to.equal("alice");
 	    expect( happ1.agent			).to.be.an("AgentPubKey");
+	    expect( happ1.status		).to.deep.equal({ running: null });
 	    expect( happ1.client		).to.be.an("AgentClient");
 	    expect( happ1.source		).to.be.a("string");
 
@@ -90,9 +91,11 @@ function basic_tests () {
 	    expect( happ1.cells.storage.dna	).to.be.a("DnaHash");
 	    expect( happ1.cells.storage.agent	).to.be.a("AgentPubKey");
 
+	    expect( happ2.status		).to.deep.equal({ running: null });
 	    expect( happ2.source		).to.be.a("object");
 	    expect( happ2.cells.test_dna.name	).to.equal("test_dna");
 
+	    expect( happ3.status		).to.deep.equal({ running: null });
 	    expect( happ3.source		).to.be.a("object");
 	    expect( happ3.cells.test_dna.name	).to.equal("test_dna");
 
