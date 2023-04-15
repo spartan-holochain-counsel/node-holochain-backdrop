@@ -1,6 +1,6 @@
 {
   "name": "@whi/holochain-backdrop",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
   "main": "src/index.js",
   "bin": {
