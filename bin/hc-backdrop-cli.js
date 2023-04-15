@@ -145,25 +145,8 @@ async function main ( args, callback ) {
 		    "path": options.config && path.resolve( process.cwd(), options.config ),
 		},
 		"timeout": options.timeout,
+		"default_loggers": !quiet,
 	    });
-
-	    if ( !quiet ) {
-		holochain.on("lair:stdout", (line, parts) => {
-		    holochain_log( "\x1b[39;1m     Lair STDOUT:", parts );
-		});
-
-		holochain.on("lair:stderr", (line, parts) => {
-		    holochain_log( "\x1b[31;1m     Lair STDERR:", parts );
-		});
-
-		holochain.on("conductor:stdout", (line, parts) => {
-		    holochain_log( "\x1b[39;1mConductor STDOUT:", parts );
-		});
-
-		holochain.on("conductor:stderr", (line, parts) => {
-		    holochain_log( "\x1b[31;1mConductor STDERR:", parts );
-		});
-	    }
 
 	    try {
 		let base_dir		= await holochain.setup();
