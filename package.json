@@ -20,7 +20,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/spartan-holochain-counsel/js-holochain-backdrop/"
+    "url": "https://github.com/spartan-holochain-counsel/node-holochain-backdrop/"
   },
   "dependencies": {
     "@whi/holochain-client": "^0.80.1",
