@@ -4,7 +4,7 @@
 
 ### Install
 ```bash
-npm install @whi/holochain-backdrop
+npm install @spartan-hc/holochain-backdrop
 ```
 
 See help output for detailed usage and options

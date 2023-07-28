@@ -196,9 +196,10 @@ class Holochain extends EventEmitter {
 	    });
 	}
 
-	if ( ! fs.existsSync( this.config.keystore.keystore_path ) ) {
-	    log.info("Creating Lair path: %s", this.config.keystore.keystore_path );
-	    fs.mkdirSync( this.config.keystore.keystore_path, {
+	this.keystore_path		= path.resolve( this.basedir, "lair-keystore" );
+	if ( ! fs.existsSync( this.keystore_path ) ) {
+	    log.info("Creating Lair path: %s", this.keystore_path );
+	    fs.mkdirSync( this.keystore_path, {
 		"recursive": true,
 	    });
 	}
@@ -227,10 +228,10 @@ class Holochain extends EventEmitter {
 
 	    await this.setup();
 
-	    const lair_config_path	= path.join( this.config.keystore.keystore_path, "lair-keystore-config.yaml" );
+	    const lair_config_path	= path.join( this.keystore_path, "lair-keystore-config.yaml" );
 	    if ( ! fs.existsSync( lair_config_path ) ) {
 		log.normal("Initializing lair-keystore because config (%s) did not exist", lair_config_path );
-		let output		= execSync(`lair-keystore -r ${this.config.keystore.keystore_path} init -p`, {
+		let output		= execSync(`lair-keystore -r ${this.keystore_path} init -p`, {
 		    "input": "",
 		    "encoding": "utf8",
 		});
@@ -251,7 +252,7 @@ class Holochain extends EventEmitter {
 	    log.info("Starting lair-keystore subprocess with debug level: %s", this.options.lair_log );
 	    this.lair			= new SubProcess({
 		"name": "Lair Keystore Process",
-		"command": [ "lair-keystore", "-r", this.config.keystore.keystore_path, "server", "-p" ],
+		"command": [ "lair-keystore", "-r", this.keystore_path, "server", "-p" ],
 		"x_env": {
 		    "RUST_LOG": this.options.lair_log,
 		},

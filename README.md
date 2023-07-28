@@ -1,12 +1,12 @@
-[![](https://img.shields.io/npm/v/@whi/holochain-backdrop/latest?style=flat-square)](http://npmjs.com/package/@whi/holochain-backdrop)
+[![](https://img.shields.io/npm/v/@spartan-hc/holochain-backdrop/latest?style=flat-square)](http://npmjs.com/package/@spartan-hc/holochain-backdrop)
 
 # Holochain Backdrop
 A Javascript library for automating the setup of a Holochain development environment.
 
 
-[![](https://img.shields.io/github/issues-raw/mjbrisebois/node-holochain-backdrop?style=flat-square)](https://github.com/mjbrisebois/node-holochain-backdrop/issues)
-[![](https://img.shields.io/github/issues-closed-raw/mjbrisebois/node-holochain-backdrop?style=flat-square)](https://github.com/mjbrisebois/node-holochain-backdrop/issues?q=is%3Aissue+is%3Aclosed)
-[![](https://img.shields.io/github/issues-pr-raw/mjbrisebois/node-holochain-backdrop?style=flat-square)](https://github.com/mjbrisebois/node-holochain-backdrop/pulls)
+[![](https://img.shields.io/github/issues-raw/spartan-holochain-counsel/node-holochain-backdrop?style=flat-square)](https://github.com/spartan-holochain-counsel/node-holochain-backdrop/issues)
+[![](https://img.shields.io/github/issues-closed-raw/spartan-holochain-counsel/node-holochain-backdrop?style=flat-square)](https://github.com/spartan-holochain-counsel/node-holochain-backdrop/issues?q=is%3Aissue+is%3Aclosed)
+[![](https://img.shields.io/github/issues-pr-raw/spartan-holochain-counsel/node-holochain-backdrop?style=flat-square)](https://github.com/spartan-holochain-counsel/node-holochain-backdrop/pulls)
 
 
 ## Overview
@@ -19,7 +19,7 @@ DNAs or UI development.  It provides reliable controls for
 
 > **Note:** this module does not include `lair-keystore` and `holochain` binaries.  They are
 > expected to be in your environment.  [see nix shell
-> configs](https://github.com/mjbrisebois/holochain-nix-shell-configs)
+> configs](https://github.com/spartan-holochain-counsel/holochain-nix-shell-configs)
 
 
 ### Holochain Version Map
@@ -38,13 +38,13 @@ For information on which versions of this package work for each Holochain releas
 ## Install
 
 ```bash
-npm i @whi/holochain-backdrop
+npm i @spartan-hc/holochain-backdrop
 ```
 
 ## Basic Usage
 
 ```javascript
-const { Holochain } = require('@whi/holochain-backdrop');
+const { Holochain } = require('@spartan-hc/holochain-backdrop');
 
 let holochain = new Holochain();
 

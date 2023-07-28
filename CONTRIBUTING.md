@@ -12,7 +12,7 @@ This module is intended to help configure, run, and setup Holochain for local de
 
 ### Environment
 
-- Developed using Node.js `v14.17.3`
+- Developed using Node.js `v18.14.2`
 
 ### Building
 No build required.  Vanilla JS only.

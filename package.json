@@ -1,5 +1,5 @@
 {
-  "name": "@whi/holochain-backdrop",
+  "name": "@spartan-hc/holochain-backdrop",
   "version": "2.2.1",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
   "main": "src/index.js",
@@ -20,7 +20,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mjbrisebois/js-holochain-backdrop/"
+    "url": "https://github.com/spartan-holochain-counsel/js-holochain-backdrop/"
   },
   "dependencies": {
     "@whi/holo-hash": "^0.3.0",

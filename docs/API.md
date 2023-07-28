@@ -4,7 +4,7 @@
 
 Examples assume the module is loaded like this
 ```javascript
-const { Holochain, Config } = require('@whi/holochain-backdrop');
+const { Holochain, Config } = require('@spartan-hc/holochain-backdrop');
 ```
 
 ### Module exports
@@ -182,7 +182,7 @@ A method that will create Agent keys, register DNAs, and install Apps for each A
 - `happs` - (*required*) an object with
   - `key` - an `app_id_prefix` used to create app IDs combined with agent names
   - `value` - the hApp input for install app (ie. file path, bundle, or DNA map)
-    - see [`installApp(...)`](https://github.com/mjbrisebois/js-holochain-client/blob/master/docs/API_AdminClient.md) for more details
+    - see [`installApp(...)`](https://github.com/spartan-holochain-counsel/js-holochain-client/blob/master/docs/API_AdminClient.md) for more details
     - also excepts a map of role names to DNA file paths
 - Optional
   - `app_port` - the port to attach for the app interface
