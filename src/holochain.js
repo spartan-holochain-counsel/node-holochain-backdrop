@@ -13,7 +13,6 @@ const { execSync }			= require('child_process');
 const { SubProcess }			= require('@whi/subprocess');
 const { PromiseTimeout,
 	TimeoutError }			= require('@whi/promise-timeout');
-const { HoloHash }			= require('@whi/holo-hash');
 const { AdminClient,
 	AgentClient }			= require('@whi/holochain-client');
 
