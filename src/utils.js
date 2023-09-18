@@ -63,9 +63,10 @@ function parse_line ( source ) {
     let location			= null;
     let message				= source;
 
-    if ( text.startsWith(" ")
-	 || text.trim().length === 1 // Catch a closing brace or bracket from debug output
-       ) {
+    if ( text.startsWith(" ") || (
+	// Catch a closing brace or bracket from debug output
+	text.trim().length > 0 && ["}", ")", "]"].includes( text.trim()[0] )
+    )) {
 	type				= "multiline";
     }
     // If it doesn't start with a date, then it is a normal printed line
