@@ -1,20 +1,23 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
-});
+import path				from 'path';
+import { Logger }			from '@whi/weblogger';
+const __dirname				= path.dirname( new URL(import.meta.url).pathname );
+const log				= new Logger(
+    "utils",
+    (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal'
+);
 
-const fs				= require('fs');
-const os				= require('os');
+import fs				from 'fs';
+import os				from 'os';
 
 
 const strip_escape_codes		= /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
 
-function sanitize_str ( str ) {
+export function sanitize_str ( str ) {
     return str.replace(strip_escape_codes, "");
 }
 
 
-function column_eclipse_right ( str, length, align = "left" ) {
+export function column_eclipse_right ( str, length, align = "left" ) {
     if ( typeof str !== "string" )
 	str				= "";
 
@@ -23,7 +26,7 @@ function column_eclipse_right ( str, length, align = "left" ) {
 	: eclipse_right( str, length ).padStart( length, " ");
 }
 
-function column_eclipse_left ( str, length, align = "right" ) {
+export function column_eclipse_left ( str, length, align = "right" ) {
     if ( typeof str !== "string" )
 	str				= "";
 
@@ -32,7 +35,7 @@ function column_eclipse_left ( str, length, align = "right" ) {
 	: eclipse_left( str, length ).padEnd( length, " ");
 }
 
-function eclipse_right ( str, length ) {
+export function eclipse_right ( str, length ) {
     if ( length === 0 )
 	return "\u2026";
     if ( str.length > length )
@@ -41,8 +44,8 @@ function eclipse_right ( str, length ) {
 	return str.slice( 0, length );
 }
 
-function eclipse_left ( str, length ) {
-    rlength				= Math.max( length - 1, 1 );
+export function eclipse_left ( str, length ) {
+    const rlength			= Math.max( length - 1, 1 );
 
     if ( length === 0 )
 	return "\u2026";
@@ -52,7 +55,7 @@ function eclipse_left ( str, length ) {
 	return str.slice( 0, length );
 }
 
-function parse_line ( source ) {
+export function parse_line ( source ) {
     const text				= sanitize_str( source );
     const metadata			= {};
 
@@ -61,6 +64,7 @@ function parse_line ( source ) {
     let level				= "error";
     let group				= null;
     let location			= null;
+    let line_number			= null;
     let message				= source;
 
     if ( text.startsWith(" ") || (
@@ -161,7 +165,7 @@ function parse_line ( source ) {
 }
 
 
-function mktmpdir () {
+export function mktmpdir () {
     let tmpdir				= path.resolve( os.tmpdir(), "conductor-" );
     return new Promise( (f,r) => {
 	fs.mkdtemp( tmpdir, (err, directory) => {
@@ -174,7 +178,7 @@ function mktmpdir () {
 }
 
 
-module.exports = {
+export default {
     sanitize_str,
     eclipse_right,
     eclipse_left,

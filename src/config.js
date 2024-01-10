@@ -1,23 +1,26 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
-});
+import path				from 'path';
+import { Logger }			from '@whi/weblogger';
+const __dirname				= path.dirname( new URL(import.meta.url).pathname );
+const log				= new Logger(
+    "config",
+    (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal'
+);
 
-const getAvailablePort			= require('get-port');
+import getAvailablePort			from 'get-port';
 
 
-const NETWORK_QUICBOOTSTRAP		= "quic_bootstrap";
-const NETWORK_QUICMDNS			= "quic_mdns";
+export const NETWORK_QUICBOOTSTRAP	= "quic_bootstrap";
+export const NETWORK_QUICMDNS		= "quic_mdns";
 
-const TRANSPORT_MEM			= "mem";
-const TRANSPORT_WEBRTC			= "webrtc";
-const TRANSPORT_PROXY			= "proxy";
+export const TRANSPORT_MEM		= "mem";
+export const TRANSPORT_WEBRTC		= "webrtc";
+export const TRANSPORT_PROXY		= "proxy";
 
-const DEFAULT_NETWORK_CONFIG		= {
+export const DEFAULT_NETWORK_CONFIG	= {
     "network_type": NETWORK_QUICBOOTSTRAP,
     "transport_pool": [{
 	"type": TRANSPORT_WEBRTC,
-	"signal_url": "wss://signal.holotest.net/",
+	"signal_url": "wss://signal.holo.host/",
     }],
     // "transport_pool": [{
     // 	"type": TRANSPORT_PROXY,
@@ -32,12 +35,12 @@ const DEFAULT_NETWORK_CONFIG		= {
 }
 
 
-async function generate ( base_dir, admin_port ) {
+export async function generate ( base_dir, admin_port ) {
     const port				= admin_port || await getAvailablePort();
 
     log.info("Determined admin port to be (given port: %s): %s", admin_port, port );
     return Object.assign({
-	"environment_path": path.resolve( base_dir, "databases" ),
+	"data_root_path": path.resolve( base_dir, "databases" ),
 	"keystore": {
 	    "type": "lair_server",
 	    "keystore_path": path.resolve( base_dir, "lair" ),
@@ -55,7 +58,7 @@ async function generate ( base_dir, admin_port ) {
 }
 
 
-module.exports = {
+export default {
     generate,
 
     DEFAULT_NETWORK_CONFIG,

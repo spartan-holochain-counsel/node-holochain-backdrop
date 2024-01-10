@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-const path				= require('path');
-const logger				= require('@whi/stdlog');
-const log				= logger(path.basename( __filename ), {
-    level: process.env.LOG_LEVEL || 'fatal',
-});
+import { Logger }			from '@whi/weblogger';
+const log				= new Logger("cli", process.env.LOG_LEVEL );
 
-const { Command, Option }		= require('commander');
-const { Holochain }			= require('../src/index.js');
+import path				from 'path';
+import url				from 'url';
+import { Command, Option }		from 'commander';
+
+import { Holochain }			from '../src/index.js';
 
 
 function increaseTotal ( v, total ) {
@@ -19,12 +19,35 @@ function detect_level ( level, default_level ) {
     if ( log[ level ] !== undefined )
 	lvl		= level;
     else if ( level === "trace" )
-	lvl		= "silly";
+	lvl		= "trace";
 
     return lvl;
 }
 
-const COLORS				= logger.COLOR_CONFIG;
+const COLOR_RESET			= "\x1b[0m";
+const COLORS				= {
+    "FATAL_LEVEL":	"\x1b[91;1m",
+    "FATAL_MESSAGE":	"",
+
+    "ERROR_LEVEL":	"\x1b[31m",
+    "ERROR_MESSAGE":	"",
+
+    "WARN_LEVEL":	"\x1b[33;1m",
+    "WARN_MESSAGE":	"\x1b[22m",
+
+    "NORMAL_LEVEL":	"\x1b[35;1m",
+    "NORMAL_MESSAGE":	COLOR_RESET,
+
+    "INFO_LEVEL":	"\x1b[36;1m",
+    "INFO_MESSAGE":	COLOR_RESET,
+
+    "DEBUG_LEVEL":	"\x1b[1m",
+    "DEBUG_MESSAGE":	COLOR_RESET,
+
+    "TRACE_LEVEL":	"\x1b[2;1m",
+    "TRACE_MESSAGE":	"\x1b[0;2m",
+};
+
 function level_color ( level ) {
     return COLORS[`${level.trim()}_LEVEL`]	|| "";
 }
@@ -40,7 +63,7 @@ const log_levels			= {
     normal: 3,
     info: 4,
     debug: 5,
-    silly: 6,
+    trace: 6,
 };
 const RUST_LOG_LEVELS			= {
     0: "error",
@@ -93,7 +116,7 @@ function print ( msg ) {
 }
 
 
-async function main ( args, callback ) {
+export async function main ( args, callback ) {
     if ( callback && typeof callback !== "function" )
 	throw new TypeError(`Callback must be a function; not type of '${typeof callback}'`);
 
@@ -117,7 +140,7 @@ async function main ( args, callback ) {
 		  )
 		: options.verbose
 
-	    log.transports[0].setLevel( verbosity );
+	    log.setLevel( verbosity );
 	})
 	.action(async function ( options ) {
 
@@ -176,14 +199,13 @@ async function main ( args, callback ) {
     const options			= program.opts();
 }
 
-
-if ( require.main === module ) {
+if ( typeof process?.mainModule?.filename !== "string" ) {
     log.normal("Running as CLI interface");
     main( process.argv )
 	.catch( console.error );
 }
 
 
-module.exports = {
+export default {
     main,
 };

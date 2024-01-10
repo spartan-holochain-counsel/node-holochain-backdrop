@@ -1,13 +1,15 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: process.env.LOG_LEVEL || 'fatal',
-});
+import { Logger }			from '@whi/weblogger';
+const log				= new Logger("test-holochain", process.env.LOG_LEVEL );
 
-// const why				= require('why-is-node-running');
-const expect				= require('chai').expect;
-const { AgentClient }			= require('@whi/holochain-client');
-const { Holochain }			= require('../../src/index.js');
+// import why				from 'why-is-node-running';
 
+import path				from 'path';
+import { expect }			from 'chai';
+
+import { Holochain }			from '../../src/index.js';
+
+
+const __dirname				= path.dirname( new URL(import.meta.url).pathname );
 
 function basic_tests () {
     it("should start and stop holochain", async function () {
@@ -76,13 +78,16 @@ function basic_tests () {
 		},
 	    });
 
+	    const app_port			= holochain.appPorts()[0];
+
+	    expect( app_port			).to.be.a("number");
+
 	    const { happ1, happ2, happ3 }	= alice;
 
 	    expect( happ1.id			).to.equal("happ1-alice");
 	    expect( happ1.actor			).to.equal("alice");
 	    expect( happ1.agent			).to.be.an("AgentPubKey");
 	    expect( happ1.status		).to.deep.equal({ running: null });
-	    expect( happ1.client		).to.be.an("AgentClient");
 	    expect( happ1.source		).to.be.a("string");
 
 	    expect( happ1.cells.storage.name	).to.equal("storage");

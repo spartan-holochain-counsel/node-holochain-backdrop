@@ -1,26 +1,34 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
-});
+import path				from 'path';
+import { Logger }			from '@whi/weblogger';
+const __dirname				= path.dirname( new URL(import.meta.url).pathname );
+const log				= new Logger(
+    "holochain",
+    (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal'
+);
 
-global.WebSocket			= require('ws');
+import WebSocket			from 'ws';
+global.WebSocket			= WebSocket;
 
-const fs				= require('fs');
-const YAML				= require('yaml');
-const EventEmitter			= require('events');
-const getAvailablePort			= require('get-port');
-const { execSync }			= require('child_process');
-const { SubProcess }			= require('@whi/subprocess');
-const { PromiseTimeout,
-	TimeoutError }			= require('@whi/promise-timeout');
-const { AdminClient,
-	AgentClient }			= require('@whi/holochain-client');
+import fs				from 'fs';
+import YAML				from 'yaml';
+import { EventEmitter }			from 'events';
+import getAvailablePort			from 'get-port';
 
-const { parse_line,
-	column_eclipse_right,
-	column_eclipse_left,
-	mktmpdir }			= require('./utils.js');
-const { generate }			= require('./config.js');
+import { execSync }			from 'child_process';
+import { PromiseTimeout }		from '@whi/promise-timeout';
+import * as PromiseTimeoutLib		from '@whi/promise-timeout';
+export const { TimeoutError }		= PromiseTimeoutLib;
+
+import SubProcessLib			from '@whi/subprocess';
+const { SubProcess }			= SubProcessLib;
+
+import { AdminClient }			from '@spartan-hc/holochain-admin-client';
+
+import { parse_line,
+	 column_eclipse_right,
+	 column_eclipse_left,
+	 mktmpdir }			from './utils.js';
+import { generate }			from './config.js';
 
 
 const DEFAULT_LAIR_LOG			= process.env.RUST_LOG || "info";
@@ -33,21 +41,10 @@ const HOLOCHAIN_DEFAULTS		= {
     "default_stdout_loggers": false,
     "default_stderr_loggers": false,
     "timeout": 10_000,
-    "clientConstructor": ( agent, roles, app_port ) => {
-	const client			= new AgentClient( agent, roles, app_port );
-	all_clients.push( client );
-	return client;
-    },
     get name () {
 	return Math.random().toString(16).slice(-12);
     },
 };
-
-const all_clients			= [];
-function exit_cleanup () {
-    all_clients.forEach( client => client.close() );
-}
-process.once("exit", exit_cleanup );
 
 async function timed ( fn ) {
     const start				= Date.now();
@@ -56,7 +53,7 @@ async function timed ( fn ) {
 }
 
 
-class Holochain extends EventEmitter {
+export class Holochain extends EventEmitter {
     constructor ( options = {} ) {
 	super();
 
@@ -66,6 +63,7 @@ class Holochain extends EventEmitter {
 	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
 	this.options.name		= this.options.name.slice(0,8);
 	this.basedir			= null;
+	this.app_ports			= [];
 
 	this._cleanup_config		= false;
 	this._cleanup_basedir		= false;
@@ -92,7 +90,7 @@ class Holochain extends EventEmitter {
 	}
 
 	if ( this.options.default_stdout_loggers === true ) {
-	    log.silly("Adding default stdout line event logging hooks");
+	    log.trace("Adding default stdout line event logging hooks");
 	    this.on("lair:stdout", (line, parts) => {
 		if ( parts.type === "multiline" )
 		    console.log( "\x1b[33;1m[%s]      Lair STDOUT:\x1b[0m %s\x1b[0m", this.id, line );
@@ -113,7 +111,7 @@ class Holochain extends EventEmitter {
 
 	}
 	if ( this.options.default_stderr_loggers === true ) {
-	    log.silly("Adding default stderr line event logging hooks");
+	    log.trace("Adding default stderr line event logging hooks");
 	    this.on("lair:stderr", (line, parts) => {
 		console.log( "\x1b[31;1m[%s]      Lair STDERR:\x1b[0m %s\x1b[0m", this.id, line );
 	    });
@@ -131,7 +129,7 @@ class Holochain extends EventEmitter {
 	    throw new Error(`Already setup @ ${this.config_file}`);
 
 
-	log.silly("Setup using options: %s", this.options );
+	log.trace("Setup using options: %s", this.options );
 	if ( this.options.config ) {
 	    if ( this.options.config.construct ) {
 		log.info("Using constructor to build config content");
@@ -355,6 +353,24 @@ class Holochain extends EventEmitter {
 	return this.config.admin_interfaces.map( iface => iface.driver.port );
     }
 
+    appPorts () {
+	this._assert_setup();
+
+	return this.app_ports;
+    }
+
+    async ensureAppPort ( app_port ) {
+	if ( !app_port )
+	    app_port			= await getAvailablePort();
+
+	log.debug("Attaching app interface to port %s", app_port );
+	await this.admin.attachAppInterface( app_port );
+
+	this.app_ports.push( app_port );
+
+	return app_port;
+    }
+
     async destroy ( exit_code = "unspecified" ) {
 	log.debug("Destroying Holochain because of %s", exit_code );
 
@@ -365,7 +381,7 @@ class Holochain extends EventEmitter {
 	this._destroyed			= true;
 
 	let statuses			= await this.stop();
-	log.silly("Exit statuses: Lair => %s && Conductor => %s", statuses[0], statuses[1] );
+	log.trace("Exit statuses: Lair => %s && Conductor => %s", statuses[0], statuses[1] );
 
 	if ( this.options.cleanup !== false ) {
 	    log.normal("Cleaning up automatically generated content");
@@ -444,7 +460,6 @@ class Holochain extends EventEmitter {
 	    "dnas": dnas,
 	    "cells": cells,
 	    "app_port": app_port,
-	    "client": this.options.clientConstructor( agent, dnas, app_port ),
 	    "source": happ_input,
 	};
     }
@@ -461,10 +476,7 @@ class Holochain extends EventEmitter {
 	if ( !this.conductor )
 	    await this.start();
 
-	const app_port			= options.app_port || await getAvailablePort();
-
-	log.debug("Attaching app interface to port %s", app_port );
-	await this.admin.attachAppInterface( app_port );
+	const app_port			= await this.ensureAppPort( options.app_port );
 
 	const agents			= {};
 	for ( let actor of options.actors ) {
@@ -541,7 +553,7 @@ async function create_happ_bundle ( name, dnas ) {
 }
 
 
-module.exports = {
+export default {
     Holochain,
     TimeoutError,
 };

@@ -1,15 +1,14 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: process.env.LOG_LEVEL || 'fatal',
-});
+import { Logger }			from '@whi/weblogger';
+const log				= new Logger("test-cli", process.env.LOG_LEVEL );
 
-const expect				= require('chai').expect;
-const { main }				= require('../../bin/hc-backdrop-cli.js');
+import { expect }			from 'chai';
+
+import { main }				from '../../bin/hc-backdrop-cli.js';
 
 
 const default_args			= [ "node", "test_cli.js" ];
 
-if ( !process.env.LOG_LEVEL )
+if ( log.level_rank < 3 )
     default_args.push( "--quiet" );
 
 function cmd_args ( ...args ) {

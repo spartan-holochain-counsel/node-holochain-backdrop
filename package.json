@@ -2,6 +2,7 @@
   "name": "@spartan-hc/holochain-backdrop",
   "version": "2.2.3",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
+  "type": "module",
   "main": "src/index.js",
   "bin": {
     "holochain-backdrop": "./bin/hc-backdrop-cli.js"
@@ -23,10 +24,10 @@
     "url": "https://github.com/spartan-holochain-counsel/node-holochain-backdrop/"
   },
   "dependencies": {
-    "@whi/holochain-client": "^0.80.1",
-    "@whi/promise-timeout": "^0.1.1",
-    "@whi/stdlog": "^0.3.4",
+    "@spartan-hc/holochain-admin-client": "^0.2.0",
+    "@whi/promise-timeout": "^0.2.2",
     "@whi/subprocess": "^0.2.1",
+    "@whi/weblogger": "^0.2.1",
     "commander": "^8.0.0",
     "get-port": "^5.1.1",
     "ws": "^8.11.0",

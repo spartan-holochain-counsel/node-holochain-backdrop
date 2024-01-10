@@ -1,18 +1,21 @@
-const path				= require('path');
-const log				= require('@whi/stdlog')(path.basename( __filename ), {
-    level: (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal',
-});
 
-const HolochainClientLib		= require('@whi/holochain-client');
+import { AdminClient }			from '@spartan-hc/holochain-admin-client';
 
-const { Holochain,
-	TimeoutError }			= require('./holochain.js');
-const Config				= require('./config.js');
+import * as Config			from './config.js';
+import { Holochain,
+	 TimeoutError }			from './holochain.js';
 
 
-module.exports = {
+export { AdminClient }			from '@spartan-hc/holochain-admin-client';
+
+export * as Config			from './config.js';
+export { Holochain,
+	 TimeoutError }			from './holochain.js';
+
+export default {
     Holochain,
     Config,
+
+    AdminClient,
     TimeoutError,
-    HolochainClientLib,
 };

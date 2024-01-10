@@ -20,22 +20,18 @@ use-npm-holochain-client:
 #
 # Testing
 #
-test:			build test-setup
-	npx mocha --recursive ./tests
-test-debug:		build test-setup
-	LOG_LEVEL=silly npx mocha --recursive ./tests
-
-test-unit:		build test-setup
-	npx mocha ./tests/unit
-test-unit-debug:	build test-setup
-	LOG_LEVEL=silly npx mocha ./tests/unit
-
-test-integration:	build test-setup
-	npx mocha ./tests/integration
-test-integration-debug:	build test-setup
-	LOG_LEVEL=silly npx mocha ./tests/integration
 test-setup:
 	rm -rf tests/tmp/
+
+test:			build test-setup
+	LOG_LEVEL=fatal npx mocha --recursive ./tests
+test-debug:		build test-setup
+	LOG_LEVEL=trace npx mocha --recursive ./tests
+
+test-unit:		build test-setup
+	LOG_LEVEL=fatal npx mocha ./tests/unit
+test-unit-debug:	build test-setup
+	LOG_LEVEL=trace npx mocha ./tests/unit
 
 #
 # Repository
