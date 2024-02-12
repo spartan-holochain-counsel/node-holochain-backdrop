@@ -5,7 +5,7 @@ import fs				from 'fs';
 import path				from 'path';
 import { expect }			from 'chai';
 
-import { Holochain, Config }		from '../../src/index.js';
+import { Holochain, Config }		from '../../lib/index.js';
 
 
 function basic_tests () {

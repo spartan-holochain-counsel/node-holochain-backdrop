@@ -6,7 +6,7 @@ import path				from 'path';
 import url				from 'url';
 import { Command, Option }		from 'commander';
 
-import { Holochain }			from '../src/index.js';
+import { Holochain }			from '../lib/index.js';
 
 
 function increaseTotal ( v, total ) {

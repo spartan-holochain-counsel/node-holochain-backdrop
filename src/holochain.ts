@@ -22,6 +22,9 @@ export const { TimeoutError }		= PromiseTimeoutLib;
 import SubProcessLib			from '@whi/subprocess';
 const { SubProcess }			= SubProcessLib;
 
+import {
+    AgentPubKey,
+}					from '@spartan-hc/holo-hash';
 import { AdminClient }			from '@spartan-hc/holochain-admin-client';
 
 import { parse_line,
@@ -62,36 +65,50 @@ async function timed ( fn ) {
 
 
 export class Holochain extends EventEmitter {
-    #actors				= {};
+    #actors		: Record<string,AgentPubKey>	= {};
+    #cleanup_basedir	: string | null			= null;
+    #cleanup_config	: boolean			= false;
+    #destroyed		: boolean			= false;
+    #exit_handler	: (...args: any[]) => void;
+    #ready		: Promise<void>;
+    #ready_fulfill	: Function;
+    #ready_reject	: Function;
+    #prep_fulfill	: () => void;
+    #prep_reject	: () => void;
+
+    options		: any;
+    basedir		: string | null			= null;
+    app_ports		: Array<number>			= [];
+    config		: any;
+    config_file		: string;
+    configured		: Promise<void>;
+    lair		: typeof SubProcess;
+    conductor		: typeof SubProcess;
+    keystore_path	: string;
+    admin		: AdminClient;
 
     constructor ( options = {} ) {
 	super();
 
-	this._exit_handler		= this._handle_exit.bind(this);
-	process.once("exit", this._exit_handler );
+	this.#exit_handler		= this.#handle_exit.bind(this);
+	process.once("exit", this.#exit_handler );
 
 	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
 	this.options.name		= this.options.name.slice(0,8);
-	this.basedir			= null;
-	this.app_ports			= [];
-
-	this._cleanup_config		= false;
-	this._cleanup_basedir		= false;
-	this._destroyed			= false;
 
 	this.configured			= new Promise( (f,r) => {
-	    this._prep_fulfill		= f;
-	    this._prep_reject		= r;
+	    this.#prep_fulfill		= f;
+	    this.#prep_reject		= r;
 	});
 
-	this._ready			= new Promise( (f,r) => {
-	    this._ready_fulfill		= f;
-	    this._ready_reject		= r;
+	this.#ready			= new Promise( (f,r) => {
+	    this.#ready_fulfill		= f;
+	    this.#ready_reject		= r;
 	});
 
-	this._setup()
-	    .then( this._prep_fulfill, this._prep_reject )
-	    .catch( this._prep_reject );
+	this.#setup()
+	    .then( this.#prep_fulfill, this.#prep_reject )
+	    .catch( this.#prep_reject );
 
 	if ( this.options.default_loggers === true ) {
 	    log.debug("Adding all default stdout/stderr");
@@ -134,7 +151,7 @@ export class Holochain extends EventEmitter {
 	}
     }
 
-    async _setup () {
+    async #setup () : Promise<string> {
 	if ( this.config_file )
 	    throw new Error(`Already setup @ ${this.config_file}`);
 
@@ -152,7 +169,7 @@ export class Holochain extends EventEmitter {
 		this.config		= await this.options.config.construct.call(this);
 
 		log.warn("Flag for config cleanup");
-		this._cleanup_config	= true;
+		this.#cleanup_config	= true;
 	    }
 	    else if ( this.options.config.path ) {
 		let config_file		= this.options.config.path;
@@ -176,8 +193,8 @@ export class Holochain extends EventEmitter {
 
 	if ( this.config === undefined ) {
 	    if ( this.basedir === null ) {
-		this.basedir		= await mktmpdir();
-		this._cleanup_basedir	= this.basedir;
+		this.basedir		= (await mktmpdir()) as string;
+		this.#cleanup_basedir	= this.basedir;
 		log.normal("Using tmp folder as base dir: %s", this.basedir );
 	    }
 
@@ -190,7 +207,7 @@ export class Holochain extends EventEmitter {
 	    if ( this.config_file === undefined ) {
 		log.warn("No config file path was specificed; using tmp dir: %s", this.basedir );
 
-		this._cleanup_config	= true;
+		this.#cleanup_config	= true;
 		this.config_file	= path.resolve( this.basedir, "config.yaml" );
 		log.debug("Set config file location to: %s", this.config_file );
 	    }
@@ -331,13 +348,13 @@ export class Holochain extends EventEmitter {
 	    });
 
 	    log.normal("Conductor is ready...");
-	    this._ready_fulfill();
+	    this.#ready_fulfill();
 	    f();
 	}, timeout, "start Holochain" );
     }
 
     ready () {
-	return this._ready;
+	return this.#ready;
     }
 
     close () {
@@ -360,13 +377,13 @@ export class Holochain extends EventEmitter {
     }
 
     adminPorts () {
-	this._assert_setup();
+	this.#assert_setup();
 
 	return this.config.admin_interfaces.map( iface => iface.driver.port );
     }
 
     appPorts () {
-	this._assert_setup();
+	this.#assert_setup();
 
 	return this.app_ports;
     }
@@ -386,11 +403,11 @@ export class Holochain extends EventEmitter {
     async destroy ( exit_code = "unspecified" ) {
 	log.debug("Destroying Holochain because of %s", exit_code );
 
-	if ( this._destroyed === true )
+	if ( this.#destroyed === true )
 	    return;
 
-	process.off("exit", this._exit_handler );
-	this._destroyed			= true;
+	process.off("exit", this.#exit_handler );
+	this.#destroyed			= true;
 
 	let statuses			= await this.stop();
 	log.trace("Exit statuses: Lair => %s && Conductor => %s", statuses[0], statuses[1] );
@@ -398,16 +415,16 @@ export class Holochain extends EventEmitter {
 	if ( this.options.cleanup !== false ) {
 	    log.normal("Cleaning up automatically generated content");
 
-	    if ( this._cleanup_config === true ) {
+	    if ( this.#cleanup_config === true ) {
 		log.warn("Removing automatically generated config file: %s", this.config_file );
 		if ( fs.existsSync( this.config_file ) )
 		    fs.unlinkSync( this.config_file );
 	    }
 
-	    if ( this._cleanup_basedir !== false ) {
-		log.warn("Removing temporary directory created by this process: %s", this._cleanup_basedir );
+	    if ( this.#cleanup_basedir !== null ) {
+		log.warn("Removing temporary directory created by this process: %s", this.#cleanup_basedir );
 		try { // TODO: fix silent fail when .rmSync does not exist
-		    fs.rmSync( this._cleanup_basedir, {
+		    fs.rmSync( this.#cleanup_basedir, {
 			"recursive": true,
 			"force": true,
 		    });
@@ -418,8 +435,8 @@ export class Holochain extends EventEmitter {
 	}
     }
 
-    async _handle_exit ( code ) {
-	if ( this._destroyed === true )
+    async #handle_exit ( code ) : Promise<void> {
+	if ( this.#destroyed === true )
 	    return;
 
 	console.log("Automatically cleaning up Holochain");
@@ -429,7 +446,7 @@ export class Holochain extends EventEmitter {
 	process.exit( code );
     }
 
-    _assert_setup () {
+    #assert_setup () {
 	if ( this.config === undefined )
 	    throw new Error(`Not setup`);
     }

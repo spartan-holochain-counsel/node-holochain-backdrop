@@ -7,7 +7,7 @@ import path				from 'path';
 import { expect }			from 'chai';
 import json				from '@whi/json';
 
-import { Holochain }			from '../../src/index.js';
+import { Holochain }			from '../../lib/index.js';
 
 
 const __dirname				= path.dirname( new URL(import.meta.url).pathname );
@@ -186,8 +186,8 @@ function basic_tests () {
 		}
 	    );
 
-	    console.log( json.debug( alice ) );
-	    console.log( json.debug( bobby ) );
+	    // console.log( json.debug( alice ) );
+	    // console.log( json.debug( bobby ) );
 
 	    expect(
 		alice.happ1.roles.storage.dna_modifiers.network_seed
@@ -216,8 +216,8 @@ function basic_tests () {
 		}
 	    );
 
-	    console.log( json.debug( carol ) );
-	    console.log( json.debug( david ) );
+	    // console.log( json.debug( carol ) );
+	    // console.log( json.debug( david ) );
 
 	    expect(
 		carol.happ2.roles.dna1.dna_modifiers.network_seed
