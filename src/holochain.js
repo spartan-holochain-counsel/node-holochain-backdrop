@@ -40,11 +40,19 @@ const HOLOCHAIN_DEFAULTS		= {
     "default_loggers": false,
     "default_stdout_loggers": false,
     "default_stderr_loggers": false,
-    "timeout": 10_000,
+    "timeout": 30_000,
     get name () {
 	return Math.random().toString(16).slice(-12);
     },
 };
+
+const APP_CONFIG_DEFAULTS		= {
+    "app_name": "*",
+    "installed_app_id": null,
+    "network_seed": "*",
+    "membrane_proofs": {},
+};
+
 
 async function timed ( fn ) {
     const start				= Date.now();
@@ -54,6 +62,8 @@ async function timed ( fn ) {
 
 
 export class Holochain extends EventEmitter {
+    #actors				= {};
+
     constructor ( options = {} ) {
 	super();
 
@@ -223,6 +233,8 @@ export class Holochain extends EventEmitter {
 	    if ( this.conductor )
 		throw new Error(`Tried to start Conductor when is was already started`);
 
+	    this.conductor		= true;
+
 	    await this.setup();
 
 	    const lair_config_path	= path.join( this.keystore_path, "lair-keystore-config.yaml" );
@@ -341,7 +353,7 @@ export class Holochain extends EventEmitter {
 	    this.lair
 		? this.lair.stop()
 		: Promise.resolve(),
-	    this.conductor
+	    this.conductor && this.conductor !== true
 		? this.conductor.stop()
 		: Promise.resolve(),
 	]);
@@ -422,107 +434,208 @@ export class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    async setupApp ( app_port, app_id_prefix, actor, agent, happ_input, options ) {
-	const app_id			= `${app_id_prefix}-${actor}`;
+    randomAppName () {
+	return ( Math.random() * 1e17 ).toString(16).slice(0,8);
+    }
 
-	log.debug("Installing app '%s' for agent %s...", app_id, actor );
-	const installation		= await this.admin.installApp( app_id, agent, happ_input, {
-	    "network_seed": options.network_seed,
-	});
+    randomNetworkSeed () {
+	return Math.random().toString(16).slice(-12);
+    }
 
-	log.debug("Activating app '%s' for agent %s...", app_id, actor );
+    async profile ( name ) {
+	if ( typeof name !== "string" )
+	    throw new TypeError(`Profile input expects a 'string'; not type '${typeof name}'`);
+
+	if ( this.#actors[ name ] === undefined )
+	    this.#actors[ name ]	= await this.admin.generateAgent();
+
+	return this.#actors[ name ];
+    }
+
+    async profiles ( ...names ) {
+	return await Promise.all(
+	    names.map( name => this.profile( name ) )
+	);
+    }
+
+    async createBundleSource ( app_config ) {
+	const bundle_source		= app_config.bundle;
+	// Source can be either
+	//
+	//   File path		- indicating the path to a hApp bundle
+	//   DNA list		- listing the DNAs and paths to DNA bundles
+	//   Bundle		- a full bundle description with manifest + resources
+	//
+
+	// Handle 'File path'
+	if ( typeof bundle_source === "string" )
+	    return bundle_source;
+
+	if ( [null, undefined].includes( bundle_source ) )
+	    throw new TypeError(`Bundle source cannot be null or undefined`);
+
+	if ( typeof bundle_source !== "object" )
+	    throw new TypeError(`Expected bundle source to be an 'object'; not type '${typeof bundle_source}'`);
+
+	// Handle 'Bundle'
+	if ( typeof bundle_source.manifest === "object" &&
+	     typeof bundle_source.resources === "object" ) {
+
+	    bundle_source.manifest	= JSON.parse( JSON.stringify( bundle_source.manifest ) );
+	    bundle_source.resources	= Object.assign( {}, bundle_source.resources );
+
+	    // Do not override network_seed if there is one set in the manifest role DNA
+	    // modifiers
+	    bundle_source.manifest.roles.forEach( role_config => {
+		if ( !role_config.dna.modifiers?.network_seed ) {
+		    if ( !role_config.dna.modifiers )
+			role_config.dna.modifiers = {};
+
+		    role_config.dna.modifiers.network_seed = app_config.network_seed;
+		}
+	    });
+
+	    return bundle_source;
+	}
+
+	if ( Object.values( bundle_source ).some( dna_path => typeof dna_path !== "string" ) )
+	    throw new TypeError(`Unknown bundle source format; did not match File path, DNA list, or Bundle`);
+
+	// Handle 'DNA list'
+	log.debug("Generating hApp bundle from DNAs...");
+	// log.trace("Created bundle source:", config );
+	return await create_happ_bundle( app_config.app_name, bundle_source );
+    }
+
+    async createAppConfig ( profile_name, app_config ) {
+	if ( typeof app_config === "string" ) {
+	    app_config			= {
+		"bundle": app_config,
+	    };
+	}
+
+	if ( [null, undefined].includes( app_config.bundle ) ) {
+	    log.error("Missing 'bundle' in app config:", app_config );
+	    throw new TypeError(`Missing 'bundle' in app config`);
+	}
+
+	const config			= Object.assign( {}, APP_CONFIG_DEFAULTS, app_config );
+
+	if ( config.installed_app_id && config.app_name )
+	    throw new Error(`Misconfiguration: 'installed_app_id' will override 'app_name'; only set 1 in app configurations`);
+
+	if ( config.app_name === "*" )
+	    config.app_name		= this.randomAppName();
+	if ( config.network_seed === "*" )
+	    config.network_seed		= this.randomNetworkSeed();
+
+	if ( !config.installed_app_id )
+	    config.installed_app_id	= `${config.app_name}-${profile_name}`;
+
+	config.bundle			= await this.createBundleSource( config );
+
+	log.trace("Created app config:", config );
+	return config;
+    }
+
+    async installApp ( profile_name, app_config ) {
+	// Normalize app config input
+	const config			= await this.createAppConfig( profile_name, app_config );
+	const app_id			= config.installed_app_id;
+	const modifiers			= { ...config };
+
+	// Ensure the profile exists
+	const pubkey			= await this.profile( profile_name );
+
+	// Install app
+	log.debug("Installing app '%s' with modifiers:", app_id, modifiers );
+	const app_info			= await this.admin.installApp(
+	    app_id, pubkey, config.bundle, modifiers
+	);
+
+	// Enable app
+	log.debug("Enabling app '%s' for agent %s...", app_id, profile_name );
 	const enabled			= await this.admin.enableApp( app_id );
 
-	const dnas			= {};
-	const cells			= {};
+	if ( enabled.errors?.length ) {
+	    log.error("Failed to enable app '%s'", app_id );
+	    enabled.errors.map( (msg, i) => {
+		log.error("  - %s: %s", i, msg );
+	    });
+	    throw new Error(`Failed to enable app '${app_id}' with ${enabled.errors.length} error(s)`)
+	}
 
-	for ( let role_name in installation.roles ) {
-	    const cell_info		= installation.roles[ role_name ];
+	// Grant capabilities for each role
+	for ( let [role_name,cell_info] of Object.entries( app_info.roles ) ) {
 	    const agent_hash		= cell_info.cell_id[1];
 	    const dna_hash		= cell_info.cell_id[0];
-
-	    dnas[ role_name ]		= dna_hash;
-	    cells[ role_name ]		= {
-		"name": role_name,
-		"id": cell_info.cell_id,
-		"dna": dna_hash,
-		"agent": agent_hash,
-	    };
 
 	    await this.admin.grantUnrestrictedCapability( "testing", agent_hash, dna_hash, "*" );
 	}
 
+	const app_info_obj		= {
+	    ...enabled.app,
+	    "source": config.bundle,
+	};
+
+	Object.defineProperties( app_info_obj, {
+	    "app_id": {
+		get () {
+		    return this.installed_app_id;
+		},
+	    },
+	});
+
 	return {
-	    "id": app_id,
-	    "agent": agent,
-	    "actor": actor,
-	    "status": enabled.app.status,
-	    "dnas": dnas,
-	    "cells": cells,
-	    "app_port": app_port,
-	    "source": happ_input,
+	    "app_name": config.app_name,
+	    "network_seed": config.network_seed,
+	    "app_info": app_info_obj,
 	};
     }
 
-    async backdrop ( happs, opts = {}) {
-	const options			= Object.assign({}, {
-	    "actors": [ "alice" ],
-	    "network_seed": Math.random().toString(16).slice(-12),
-	}, opts );
-
-	await this.configued;
-
-	// Start holochain if it is not already started
+    // By default, an "install" will create a random network seed and use it for all the
+    // profiles/apps.  Each app config can override the collective network seed.
+    async install ( profile_names, app_configs, default_config = {} ) {
+	// options - should be settings for all app_configs; such as 'network_seed'.  app config
+	// settings take priority over
 	if ( !this.conductor )
 	    await this.start();
 
-	const app_port			= await this.ensureAppPort( options.app_port );
+	const defaults			= Object.assign( { "network_seed": "*" }, default_config );
 
-	const agents			= {};
-	for ( let actor of options.actors ) {
-	    const agent			= await this.admin.generateAgent();
-	    const installs		= {};
+	if ( defaults.network_seed === "*" )
+	    defaults.network_seed	= this.randomNetworkSeed();
 
-	    for ( let app_id_prefix in happs ) {
-		let happ_input		= happs[ app_id_prefix ];
-		let setup_opts		= {};
+	if ( !Array.isArray( profile_names ) )
+	    profile_names		= [ profile_names ];
 
-		// A config object that doesn't have the bundle properties is assumed to be a map of
-		// DNA bundle paths.
-		if ( typeof happ_input !== "string" ) {
-		    if ( typeof happ_input.manifest === "object" &&
-			 typeof happ_input.resources === "object" ) {
-			// Do not override network_seed if there is one set in the manifest role DNA
-			// modifiers
-			happ_input.manifest.roles.forEach( role_config => {
-			    if ( !role_config.dna.modifiers ) {
-				role_config.dna.modifiers = {
-				    "network_seed": options.network_seed,
-				};
-			    }
-			    else if ( !role_config.dna.modifiers.network_seed ) {
-				role_config.dna.modifiers.network_seed = options.network_seed;
-			    }
-			});
-		    }
-		    else {
-			log.debug("Generating hApp bundle from DNAs...");
-			happ_input		= await create_happ_bundle( app_id_prefix, happ_input );
-			setup_opts.network_seed	= options.network_seed;
-		    }
-		}
-		else {
-		    setup_opts.network_seed	= options.network_seed;
-		}
+	if ( !Array.isArray( app_configs ) )
+	    app_configs		= [ app_configs ];
 
-		log.debug("Setup app '%s' for agent %s...", app_id_prefix, actor );
-		installs[ app_id_prefix ]	= await this.setupApp( app_port, app_id_prefix, actor, agent, happ_input, setup_opts );
+	const installations		= {};
+
+	for ( let name of profile_names ) {
+	    installations[ name ]	= {};
+
+	    for ( let [i,config] of Object.entries(app_configs) ) {
+		if ( typeof config === "string" )
+		    config			= { "bundle": config };
+		const app_settings	= Object.assign( {}, defaults, config );
+
+		log.debug("Install app settings:", app_settings );
+		const install_info	= await this.installApp( name, app_settings );
+		const { app_name,
+			app_info }	= install_info;
+
+		installations[ name ][ app_name ]	= app_info;
+
+		Object.defineProperty( installations[ name ], i, {
+		    "value": app_info,
+		});
 	    }
-
-	    agents[ actor ]		= installs;
 	}
 
-	return agents;
+	return installations;
     }
 
     get id () {
