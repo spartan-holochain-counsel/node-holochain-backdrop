@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
   "type": "module",
-  "main": "lib/node.js",
+  "main": "lib/index.js",
   "bin": {
     "holochain-backdrop": "./bin/hc-backdrop-cli.js"
   },

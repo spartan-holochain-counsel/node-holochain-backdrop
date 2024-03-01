@@ -32,22 +32,21 @@ import { parse_line,
 	 column_eclipse_left,
 	 mktmpdir }			from './utils.js';
 import { generate }			from './config.js';
+import {
+    DnaMap,
+    HappBundle,
+    InstallInput,
+    InstallDefaults,
+    InstallResult,
+    CreateAppConfigInput,
+    HolochainDefaults,
+    HolochainOptions,
+    HolochainConfig,
+}					from './types.js';
 
 
 const DEFAULT_LAIR_LOG			= process.env.RUST_LOG || "info";
 const DEFAULT_COND_LOG			= process.env.RUST_LOG || "info";
-
-const HOLOCHAIN_DEFAULTS		= {
-    "lair_log": process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
-    "conductor_log": process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
-    "default_loggers": false,
-    "default_stdout_loggers": false,
-    "default_stderr_loggers": false,
-    "timeout": 30_000,
-    get name () {
-	return Math.random().toString(16).slice(-12);
-    },
-};
 
 const APP_CONFIG_DEFAULTS		= {
     "app_name": "*",
@@ -57,15 +56,21 @@ const APP_CONFIG_DEFAULTS		= {
 };
 
 
-async function timed ( fn ) {
-    const start				= Date.now();
-    await fn();
-    return Date.now() - start;
-}
-
-
 export class Holochain extends EventEmitter {
-    #actors		: Record<string,AgentPubKey>	= {};
+    static defaults () : HolochainDefaults {
+	return {
+	    "lair_log":			process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
+	    "conductor_log":		process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
+	    "default_loggers":		false,
+	    "default_stdout_loggers":	false,
+	    "default_stderr_loggers":	false,
+	    "timeout":			30_000,
+	    "name":			Math.random().toString(16).slice(-12),
+	    "cleanup":			true,
+	};
+    }
+
+    #actors		: Record<string, AgentPubKey>	= {};
     #cleanup_basedir	: string | null			= null;
     #cleanup_config	: boolean			= false;
     #destroyed		: boolean			= false;
@@ -73,31 +78,30 @@ export class Holochain extends EventEmitter {
     #ready		: Promise<void>;
     #ready_fulfill	: Function;
     #ready_reject	: Function;
-    #prep_fulfill	: () => void;
+    #prep_fulfill	: (value: string) => string;
     #prep_reject	: () => void;
 
-    options		: any;
+    options		: HolochainOptions;
     basedir		: string | null			= null;
     app_ports		: Array<number>			= [];
-    config		: any;
+    config		: HolochainConfig;
     config_file		: string;
-    configured		: Promise<void>;
+    configured		: Promise<string>;
     lair		: typeof SubProcess;
     conductor		: typeof SubProcess;
     keystore_path	: string;
     admin		: AdminClient;
 
-    constructor ( options = {} ) {
+    constructor ( options : HolochainDefaults = {} ) {
 	super();
 
 	this.#exit_handler		= this.#handle_exit.bind(this);
 	process.once("exit", this.#exit_handler );
 
-	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
-	this.options.name		= this.options.name.slice(0,8);
+	this.options			= Object.assign({}, Holochain.defaults(), options ) as HolochainOptions;
 
 	this.configured			= new Promise( (f,r) => {
-	    this.#prep_fulfill		= f;
+	    this.#prep_fulfill		= f as any;
 	    this.#prep_reject		= r;
 	});
 
@@ -231,18 +235,18 @@ export class Holochain extends EventEmitter {
 	return this.basedir;
     }
 
-    setup () {
+    setup () : Promise<string> {
 	return this.configured;
     }
 
-    start ( timeout = 60_000 ) {
+    start ( timeout : number = 60_000 ) : Promise<void> {
 	const start_time		= Date.now();
 
-	function elapsed () {
+	function elapsed () : number {
 	    return Date.now() - start_time;
 	}
 
-	function remaining_time () {
+	function remaining_time () : number {
 	    return timeout - elapsed();
 	}
 
@@ -353,15 +357,15 @@ export class Holochain extends EventEmitter {
 	}, timeout, "start Holochain" );
     }
 
-    ready () {
+    ready () : Promise<void> {
 	return this.#ready;
     }
 
-    close () {
+    close () : Promise<void> {
 	return this.conductor.close();
     }
 
-    async stop () {
+    async stop () : Promise<Array<void>> {
 	if ( this.admin )
 	    await this.admin.close();
 
@@ -376,19 +380,19 @@ export class Holochain extends EventEmitter {
 	]);
     }
 
-    adminPorts () {
+    adminPorts () : Array<number> {
 	this.#assert_setup();
 
 	return this.config.admin_interfaces.map( iface => iface.driver.port );
     }
 
-    appPorts () {
+    appPorts () : Array<number> {
 	this.#assert_setup();
 
 	return this.app_ports;
     }
 
-    async ensureAppPort ( app_port ) {
+    async ensureAppPort ( app_port?: number ) : Promise<number> {
 	if ( !app_port )
 	    app_port			= await getAvailablePort();
 
@@ -400,7 +404,7 @@ export class Holochain extends EventEmitter {
 	return app_port;
     }
 
-    async destroy ( exit_code = "unspecified" ) {
+    async destroy ( exit_code : number = Infinity ) : Promise<void> {
 	log.debug("Destroying Holochain because of %s", exit_code );
 
 	if ( this.#destroyed === true )
@@ -435,7 +439,7 @@ export class Holochain extends EventEmitter {
 	}
     }
 
-    async #handle_exit ( code ) : Promise<void> {
+    async #handle_exit ( code : number ) : Promise<void> {
 	if ( this.#destroyed === true )
 	    return;
 
@@ -451,15 +455,15 @@ export class Holochain extends EventEmitter {
 	    throw new Error(`Not setup`);
     }
 
-    randomAppName () {
+    randomAppName () : string {
 	return ( Math.random() * 1e17 ).toString(16).slice(0,8);
     }
 
-    randomNetworkSeed () {
+    randomNetworkSeed () : string {
 	return Math.random().toString(16).slice(-12);
     }
 
-    async profile ( name ) {
+    async profile ( name: string ) : Promise<AgentPubKey> {
 	if ( typeof name !== "string" )
 	    throw new TypeError(`Profile input expects a 'string'; not type '${typeof name}'`);
 
@@ -469,13 +473,13 @@ export class Holochain extends EventEmitter {
 	return this.#actors[ name ];
     }
 
-    async profiles ( ...names ) {
+    async profiles ( ...names: Array<string> ) : Promise<Array<AgentPubKey>> {
 	return await Promise.all(
 	    names.map( name => this.profile( name ) )
 	);
     }
 
-    async createBundleSource ( app_config ) {
+    async createBundleSource ( app_config ) : Promise<string | HappBundle> {
 	const bundle_source		= app_config.bundle;
 	// Source can be either
 	//
@@ -524,7 +528,10 @@ export class Holochain extends EventEmitter {
 	return await create_happ_bundle( app_config.app_name, bundle_source );
     }
 
-    async createAppConfig ( profile_name, app_config ) {
+    async createAppConfig (
+	profile_name:	string,
+	app_config:	string | CreateAppConfigInput,
+    ) : Promise<InstallInput> {
 	if ( typeof app_config === "string" ) {
 	    app_config			= {
 		"bundle": app_config,
@@ -536,17 +543,17 @@ export class Holochain extends EventEmitter {
 	    throw new TypeError(`Missing 'bundle' in app config`);
 	}
 
-	const config			= Object.assign( {}, APP_CONFIG_DEFAULTS, app_config );
-
-	if ( config.installed_app_id && config.app_name )
+	if ( ("installed_app_id" in app_config) && ("app_name" in app_config) )
 	    throw new Error(`Misconfiguration: 'installed_app_id' will override 'app_name'; only set 1 in app configurations`);
 
-	if ( config.app_name === "*" )
+	const config : InstallInput	= Object.assign( {}, APP_CONFIG_DEFAULTS, app_config );
+
+	if ( "app_name" in config && config.app_name === "*" )
 	    config.app_name		= this.randomAppName();
 	if ( config.network_seed === "*" )
 	    config.network_seed		= this.randomNetworkSeed();
 
-	if ( !config.installed_app_id )
+	if ( !config?.installed_app_id )
 	    config.installed_app_id	= `${config.app_name}-${profile_name}`;
 
 	config.bundle			= await this.createBundleSource( config );
@@ -555,7 +562,10 @@ export class Holochain extends EventEmitter {
 	return config;
     }
 
-    async installApp ( profile_name, app_config ) {
+    async installApp (
+	profile_name:		string,
+	app_config:		string | CreateAppConfigInput,
+    ) : Promise<InstallResult> {
 	// Normalize app config input
 	const config			= await this.createAppConfig( profile_name, app_config );
 	const app_id			= config.installed_app_id;
@@ -612,7 +622,11 @@ export class Holochain extends EventEmitter {
 
     // By default, an "install" will create a random network seed and use it for all the
     // profiles/apps.  Each app config can override the collective network seed.
-    async install ( profile_names, app_configs, default_config = {} ) {
+    async install (
+	profile_names:		string | Array<string>,
+	app_configs:		string | CreateAppConfigInput | Array<string | CreateAppConfigInput>,
+	default_config:		InstallDefaults = {},
+    ) : Promise<Record<string,any>> {
 	// options - should be settings for all app_configs; such as 'network_seed'.  app config
 	// settings take priority over
 	if ( !this.conductor )
@@ -635,9 +649,12 @@ export class Holochain extends EventEmitter {
 	    installations[ name ]	= {};
 
 	    for ( let [i,config] of Object.entries(app_configs) ) {
-		if ( typeof config === "string" )
-		    config			= { "bundle": config };
-		const app_settings	= Object.assign( {}, defaults, config );
+		const app_settings = Object.assign(
+		    {}, defaults,
+		    typeof config === "string"
+			? { "bundle": config }
+			: config
+		);
 
 		log.debug("Install app settings:", app_settings );
 		const install_info	= await this.installApp( name, app_settings );
@@ -655,12 +672,15 @@ export class Holochain extends EventEmitter {
 	return installations;
     }
 
-    get id () {
+    get id () : string {
 	return this.options.name;
     }
 }
 
-async function create_happ_bundle ( name, dnas ) {
+async function create_happ_bundle (
+    name:	string,
+    dnas:	DnaMap,
+) : Promise<HappBundle> {
     const bundle_config			= {
 	"manifest": {
 	    "manifest_version": "1",
@@ -682,6 +702,8 @@ async function create_happ_bundle ( name, dnas ) {
     return bundle_config;
 }
 
+
+export * from './types.js';
 
 export default {
     Holochain,
