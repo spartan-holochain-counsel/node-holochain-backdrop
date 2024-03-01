@@ -22,6 +22,9 @@ export const { TimeoutError }		= PromiseTimeoutLib;
 import SubProcessLib			from '@whi/subprocess';
 const { SubProcess }			= SubProcessLib;
 
+import {
+    AgentPubKey,
+}					from '@spartan-hc/holo-hash';
 import { AdminClient }			from '@spartan-hc/holochain-admin-client';
 
 import { parse_line,
@@ -29,22 +32,21 @@ import { parse_line,
 	 column_eclipse_left,
 	 mktmpdir }			from './utils.js';
 import { generate }			from './config.js';
+import {
+    DnaMap,
+    HappBundle,
+    InstallInput,
+    InstallDefaults,
+    InstallResult,
+    CreateAppConfigInput,
+    HolochainDefaults,
+    HolochainOptions,
+    HolochainConfig,
+}					from './types.js';
 
 
 const DEFAULT_LAIR_LOG			= process.env.RUST_LOG || "info";
 const DEFAULT_COND_LOG			= process.env.RUST_LOG || "info";
-
-const HOLOCHAIN_DEFAULTS		= {
-    "lair_log": process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
-    "conductor_log": process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
-    "default_loggers": false,
-    "default_stdout_loggers": false,
-    "default_stderr_loggers": false,
-    "timeout": 30_000,
-    get name () {
-	return Math.random().toString(16).slice(-12);
-    },
-};
 
 const APP_CONFIG_DEFAULTS		= {
     "app_name": "*",
@@ -54,44 +56,63 @@ const APP_CONFIG_DEFAULTS		= {
 };
 
 
-async function timed ( fn ) {
-    const start				= Date.now();
-    await fn();
-    return Date.now() - start;
-}
-
-
 export class Holochain extends EventEmitter {
-    #actors				= {};
+    static defaults () : HolochainDefaults {
+	return {
+	    "lair_log":			process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
+	    "conductor_log":		process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
+	    "default_loggers":		false,
+	    "default_stdout_loggers":	false,
+	    "default_stderr_loggers":	false,
+	    "timeout":			30_000,
+	    "name":			Math.random().toString(16).slice(-12),
+	    "cleanup":			true,
+	};
+    }
 
-    constructor ( options = {} ) {
+    #actors		: Record<string, AgentPubKey>	= {};
+    #cleanup_basedir	: string | null			= null;
+    #cleanup_config	: boolean			= false;
+    #destroyed		: boolean			= false;
+    #exit_handler	: (...args: any[]) => void;
+    #ready		: Promise<void>;
+    #ready_fulfill	: Function;
+    #ready_reject	: Function;
+    #prep_fulfill	: (value: string) => string;
+    #prep_reject	: () => void;
+
+    options		: HolochainOptions;
+    basedir		: string | null			= null;
+    app_ports		: Array<number>			= [];
+    config		: HolochainConfig;
+    config_file		: string;
+    configured		: Promise<string>;
+    lair		: typeof SubProcess;
+    conductor		: typeof SubProcess;
+    keystore_path	: string;
+    admin		: AdminClient;
+
+    constructor ( options : HolochainDefaults = {} ) {
 	super();
 
-	this._exit_handler		= this._handle_exit.bind(this);
-	process.once("exit", this._exit_handler );
+	this.#exit_handler		= this.#handle_exit.bind(this);
+	process.once("exit", this.#exit_handler );
 
-	this.options			= Object.assign({}, HOLOCHAIN_DEFAULTS, options );
-	this.options.name		= this.options.name.slice(0,8);
-	this.basedir			= null;
-	this.app_ports			= [];
-
-	this._cleanup_config		= false;
-	this._cleanup_basedir		= false;
-	this._destroyed			= false;
+	this.options			= Object.assign({}, Holochain.defaults(), options ) as HolochainOptions;
 
 	this.configured			= new Promise( (f,r) => {
-	    this._prep_fulfill		= f;
-	    this._prep_reject		= r;
+	    this.#prep_fulfill		= f as any;
+	    this.#prep_reject		= r;
 	});
 
-	this._ready			= new Promise( (f,r) => {
-	    this._ready_fulfill		= f;
-	    this._ready_reject		= r;
+	this.#ready			= new Promise( (f,r) => {
+	    this.#ready_fulfill		= f;
+	    this.#ready_reject		= r;
 	});
 
-	this._setup()
-	    .then( this._prep_fulfill, this._prep_reject )
-	    .catch( this._prep_reject );
+	this.#setup()
+	    .then( this.#prep_fulfill, this.#prep_reject )
+	    .catch( this.#prep_reject );
 
 	if ( this.options.default_loggers === true ) {
 	    log.debug("Adding all default stdout/stderr");
@@ -134,7 +155,7 @@ export class Holochain extends EventEmitter {
 	}
     }
 
-    async _setup () {
+    async #setup () : Promise<string> {
 	if ( this.config_file )
 	    throw new Error(`Already setup @ ${this.config_file}`);
 
@@ -152,7 +173,7 @@ export class Holochain extends EventEmitter {
 		this.config		= await this.options.config.construct.call(this);
 
 		log.warn("Flag for config cleanup");
-		this._cleanup_config	= true;
+		this.#cleanup_config	= true;
 	    }
 	    else if ( this.options.config.path ) {
 		let config_file		= this.options.config.path;
@@ -176,8 +197,8 @@ export class Holochain extends EventEmitter {
 
 	if ( this.config === undefined ) {
 	    if ( this.basedir === null ) {
-		this.basedir		= await mktmpdir();
-		this._cleanup_basedir	= this.basedir;
+		this.basedir		= (await mktmpdir()) as string;
+		this.#cleanup_basedir	= this.basedir;
 		log.normal("Using tmp folder as base dir: %s", this.basedir );
 	    }
 
@@ -190,7 +211,7 @@ export class Holochain extends EventEmitter {
 	    if ( this.config_file === undefined ) {
 		log.warn("No config file path was specificed; using tmp dir: %s", this.basedir );
 
-		this._cleanup_config	= true;
+		this.#cleanup_config	= true;
 		this.config_file	= path.resolve( this.basedir, "config.yaml" );
 		log.debug("Set config file location to: %s", this.config_file );
 	    }
@@ -214,18 +235,18 @@ export class Holochain extends EventEmitter {
 	return this.basedir;
     }
 
-    setup () {
+    setup () : Promise<string> {
 	return this.configured;
     }
 
-    start ( timeout = 60_000 ) {
+    start ( timeout : number = 60_000 ) : Promise<void> {
 	const start_time		= Date.now();
 
-	function elapsed () {
+	function elapsed () : number {
 	    return Date.now() - start_time;
 	}
 
-	function remaining_time () {
+	function remaining_time () : number {
 	    return timeout - elapsed();
 	}
 
@@ -331,20 +352,20 @@ export class Holochain extends EventEmitter {
 	    });
 
 	    log.normal("Conductor is ready...");
-	    this._ready_fulfill();
+	    this.#ready_fulfill();
 	    f();
 	}, timeout, "start Holochain" );
     }
 
-    ready () {
-	return this._ready;
+    ready () : Promise<void> {
+	return this.#ready;
     }
 
-    close () {
+    close () : Promise<void> {
 	return this.conductor.close();
     }
 
-    async stop () {
+    async stop () : Promise<Array<void>> {
 	if ( this.admin )
 	    await this.admin.close();
 
@@ -359,19 +380,19 @@ export class Holochain extends EventEmitter {
 	]);
     }
 
-    adminPorts () {
-	this._assert_setup();
+    adminPorts () : Array<number> {
+	this.#assert_setup();
 
 	return this.config.admin_interfaces.map( iface => iface.driver.port );
     }
 
-    appPorts () {
-	this._assert_setup();
+    appPorts () : Array<number> {
+	this.#assert_setup();
 
 	return this.app_ports;
     }
 
-    async ensureAppPort ( app_port ) {
+    async ensureAppPort ( app_port?: number ) : Promise<number> {
 	if ( !app_port )
 	    app_port			= await getAvailablePort();
 
@@ -383,14 +404,14 @@ export class Holochain extends EventEmitter {
 	return app_port;
     }
 
-    async destroy ( exit_code = "unspecified" ) {
+    async destroy ( exit_code : number = Infinity ) : Promise<void> {
 	log.debug("Destroying Holochain because of %s", exit_code );
 
-	if ( this._destroyed === true )
+	if ( this.#destroyed === true )
 	    return;
 
-	process.off("exit", this._exit_handler );
-	this._destroyed			= true;
+	process.off("exit", this.#exit_handler );
+	this.#destroyed			= true;
 
 	let statuses			= await this.stop();
 	log.trace("Exit statuses: Lair => %s && Conductor => %s", statuses[0], statuses[1] );
@@ -398,16 +419,16 @@ export class Holochain extends EventEmitter {
 	if ( this.options.cleanup !== false ) {
 	    log.normal("Cleaning up automatically generated content");
 
-	    if ( this._cleanup_config === true ) {
+	    if ( this.#cleanup_config === true ) {
 		log.warn("Removing automatically generated config file: %s", this.config_file );
 		if ( fs.existsSync( this.config_file ) )
 		    fs.unlinkSync( this.config_file );
 	    }
 
-	    if ( this._cleanup_basedir !== false ) {
-		log.warn("Removing temporary directory created by this process: %s", this._cleanup_basedir );
+	    if ( this.#cleanup_basedir !== null ) {
+		log.warn("Removing temporary directory created by this process: %s", this.#cleanup_basedir );
 		try { // TODO: fix silent fail when .rmSync does not exist
-		    fs.rmSync( this._cleanup_basedir, {
+		    fs.rmSync( this.#cleanup_basedir, {
 			"recursive": true,
 			"force": true,
 		    });
@@ -418,8 +439,8 @@ export class Holochain extends EventEmitter {
 	}
     }
 
-    async _handle_exit ( code ) {
-	if ( this._destroyed === true )
+    async #handle_exit ( code : number ) : Promise<void> {
+	if ( this.#destroyed === true )
 	    return;
 
 	console.log("Automatically cleaning up Holochain");
@@ -429,20 +450,20 @@ export class Holochain extends EventEmitter {
 	process.exit( code );
     }
 
-    _assert_setup () {
+    #assert_setup () {
 	if ( this.config === undefined )
 	    throw new Error(`Not setup`);
     }
 
-    randomAppName () {
+    randomAppName () : string {
 	return ( Math.random() * 1e17 ).toString(16).slice(0,8);
     }
 
-    randomNetworkSeed () {
+    randomNetworkSeed () : string {
 	return Math.random().toString(16).slice(-12);
     }
 
-    async profile ( name ) {
+    async profile ( name: string ) : Promise<AgentPubKey> {
 	if ( typeof name !== "string" )
 	    throw new TypeError(`Profile input expects a 'string'; not type '${typeof name}'`);
 
@@ -452,13 +473,13 @@ export class Holochain extends EventEmitter {
 	return this.#actors[ name ];
     }
 
-    async profiles ( ...names ) {
+    async profiles ( ...names: Array<string> ) : Promise<Array<AgentPubKey>> {
 	return await Promise.all(
 	    names.map( name => this.profile( name ) )
 	);
     }
 
-    async createBundleSource ( app_config ) {
+    async createBundleSource ( app_config ) : Promise<string | HappBundle> {
 	const bundle_source		= app_config.bundle;
 	// Source can be either
 	//
@@ -507,7 +528,10 @@ export class Holochain extends EventEmitter {
 	return await create_happ_bundle( app_config.app_name, bundle_source );
     }
 
-    async createAppConfig ( profile_name, app_config ) {
+    async createAppConfig (
+	profile_name:	string,
+	app_config:	string | CreateAppConfigInput,
+    ) : Promise<InstallInput> {
 	if ( typeof app_config === "string" ) {
 	    app_config			= {
 		"bundle": app_config,
@@ -519,17 +543,17 @@ export class Holochain extends EventEmitter {
 	    throw new TypeError(`Missing 'bundle' in app config`);
 	}
 
-	const config			= Object.assign( {}, APP_CONFIG_DEFAULTS, app_config );
-
-	if ( config.installed_app_id && config.app_name )
+	if ( ("installed_app_id" in app_config) && ("app_name" in app_config) )
 	    throw new Error(`Misconfiguration: 'installed_app_id' will override 'app_name'; only set 1 in app configurations`);
 
-	if ( config.app_name === "*" )
+	const config : InstallInput	= Object.assign( {}, APP_CONFIG_DEFAULTS, app_config );
+
+	if ( "app_name" in config && config.app_name === "*" )
 	    config.app_name		= this.randomAppName();
 	if ( config.network_seed === "*" )
 	    config.network_seed		= this.randomNetworkSeed();
 
-	if ( !config.installed_app_id )
+	if ( !config?.installed_app_id )
 	    config.installed_app_id	= `${config.app_name}-${profile_name}`;
 
 	config.bundle			= await this.createBundleSource( config );
@@ -538,7 +562,10 @@ export class Holochain extends EventEmitter {
 	return config;
     }
 
-    async installApp ( profile_name, app_config ) {
+    async installApp (
+	profile_name:		string,
+	app_config:		string | CreateAppConfigInput,
+    ) : Promise<InstallResult> {
 	// Normalize app config input
 	const config			= await this.createAppConfig( profile_name, app_config );
 	const app_id			= config.installed_app_id;
@@ -595,7 +622,11 @@ export class Holochain extends EventEmitter {
 
     // By default, an "install" will create a random network seed and use it for all the
     // profiles/apps.  Each app config can override the collective network seed.
-    async install ( profile_names, app_configs, default_config = {} ) {
+    async install (
+	profile_names:		string | Array<string>,
+	app_configs:		string | CreateAppConfigInput | Array<string | CreateAppConfigInput>,
+	default_config:		InstallDefaults = {},
+    ) : Promise<Record<string,any>> {
 	// options - should be settings for all app_configs; such as 'network_seed'.  app config
 	// settings take priority over
 	if ( !this.conductor )
@@ -618,9 +649,12 @@ export class Holochain extends EventEmitter {
 	    installations[ name ]	= {};
 
 	    for ( let [i,config] of Object.entries(app_configs) ) {
-		if ( typeof config === "string" )
-		    config			= { "bundle": config };
-		const app_settings	= Object.assign( {}, defaults, config );
+		const app_settings = Object.assign(
+		    {}, defaults,
+		    typeof config === "string"
+			? { "bundle": config }
+			: config
+		);
 
 		log.debug("Install app settings:", app_settings );
 		const install_info	= await this.installApp( name, app_settings );
@@ -638,12 +672,15 @@ export class Holochain extends EventEmitter {
 	return installations;
     }
 
-    get id () {
+    get id () : string {
 	return this.options.name;
     }
 }
 
-async function create_happ_bundle ( name, dnas ) {
+async function create_happ_bundle (
+    name:	string,
+    dnas:	DnaMap,
+) : Promise<HappBundle> {
     const bundle_config			= {
 	"manifest": {
 	    "manifest_version": "1",
@@ -665,6 +702,8 @@ async function create_happ_bundle ( name, dnas ) {
     return bundle_config;
 }
 
+
+export * from './types.js';
 
 export default {
     Holochain,

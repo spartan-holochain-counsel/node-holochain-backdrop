@@ -4,7 +4,7 @@ const log				= new Logger("test-config", process.env.LOG_LEVEL );
 import path				from 'path';
 import { expect }			from 'chai';
 
-import { generate }			from '../../src/config.js';
+import { generate }			from '../../lib/config.js';
 
 
 const __dirname				= path.dirname( new URL(import.meta.url).pathname );

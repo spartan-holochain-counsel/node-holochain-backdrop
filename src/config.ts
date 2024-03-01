@@ -8,6 +8,10 @@ const log				= new Logger(
 
 import getAvailablePort			from 'get-port';
 
+import {
+    HolochainConfig,
+}					from './types.js';
+
 
 export const NETWORK_QUICBOOTSTRAP	= "quic_bootstrap";
 export const NETWORK_QUICMDNS		= "quic_mdns";
@@ -35,7 +39,10 @@ export const DEFAULT_NETWORK_CONFIG	= {
 }
 
 
-export async function generate ( base_dir, admin_port ) {
+export async function generate (
+    base_dir:		string,
+    admin_port?:	number | null,
+) : Promise<HolochainConfig> {
     const port				= admin_port || await getAvailablePort();
 
     log.info("Determined admin port to be (given port: %s): %s", admin_port, port );
@@ -44,6 +51,7 @@ export async function generate ( base_dir, admin_port ) {
 	"keystore": {
 	    "type": "lair_server",
 	    "keystore_path": path.resolve( base_dir, "lair" ),
+	    "connection_url": "**will be replaced at runtime**",
 	    "danger_passphrase_insecure_from_config": "",
 	},
 	"admin_interfaces": [{

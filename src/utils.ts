@@ -57,7 +57,7 @@ export function eclipse_left ( str, length ) {
 
 export function parse_line ( source ) {
     const text				= sanitize_str( source );
-    const metadata			= {};
+    const metadata			= {} as any;
 
     let type				= "unknown";
     let date				= new Date();

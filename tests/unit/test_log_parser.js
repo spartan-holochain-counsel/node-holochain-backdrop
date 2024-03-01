@@ -6,7 +6,7 @@ import path				from 'path';
 import { expect }			from 'chai';
 import { parse_line,
 	 column_eclipse_right,
-	 column_eclipse_left }		from '../../src/utils.js';
+	 column_eclipse_left }		from '../../lib/utils.js';
 
 
 const __dirname				= path.dirname( new URL(import.meta.url).pathname );

@@ -1,3 +1,15 @@
+.PHONY:			FORCE
+
+#
+# Building
+#
+build:			FORCE lib/index.js
+lib/index.js:		node_modules src/*.ts Makefile
+	rm -f lib/*.js
+	npx tsc -t es2022 -m es2022 --moduleResolution node --esModuleInterop \
+		--outDir lib -d --sourceMap src/index.ts
+
+
 #
 # Project
 #
@@ -20,18 +32,21 @@ use-npm-holochain-client:
 #
 # Testing
 #
+DEBUG_LEVEL	       ?= fatal
+TEST_ENV_VARS		= LOG_LEVEL=$(DEBUG_LEVEL)
+MOCHA_OPTS		= -n enable-source-maps
+
 test-setup:
 	rm -rf tests/tmp/
 
 test:			build test-setup
-	LOG_LEVEL=fatal npx mocha --recursive ./tests
-test-debug:		build test-setup
-	LOG_LEVEL=trace npx mocha --recursive ./tests
+	$(TEST_ENV_VARS) npx mocha --recursive ./tests
 
 test-unit:		build test-setup
-	LOG_LEVEL=fatal npx mocha ./tests/unit
-test-unit-debug:	build test-setup
-	LOG_LEVEL=trace npx mocha ./tests/unit
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit
+
+test-unit-holochain:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_holochain.js
 
 #
 # Repository
