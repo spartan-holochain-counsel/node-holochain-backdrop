@@ -58,6 +58,7 @@ export async function generate (
 	    "driver": {
 		"type": "websocket",
 		"port": port,
+		"allowed_origins": "*",
 	    },
 	}],
 	"network": DEFAULT_NETWORK_CONFIG,

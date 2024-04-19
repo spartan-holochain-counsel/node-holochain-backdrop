@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@spartan-hc/holo-hash": "^0.6.1",
-    "@spartan-hc/holochain-admin-client": "^1.0.0",
+    "@spartan-hc/holochain-admin-client": "^1.1.0",
     "@whi/promise-timeout": "^0.2.2",
     "@whi/subprocess": "^0.2.1",
     "@whi/weblogger": "^0.2.1",

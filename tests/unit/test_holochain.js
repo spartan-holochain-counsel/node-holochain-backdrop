@@ -68,6 +68,31 @@ function basic_tests () {
 	}
     });
 
+    it("should install app 2x with different network seeds", async function () {
+	this.timeout( 60_000 );
+
+	const holochain			= new Holochain();
+	try {
+	    await holochain.start();
+
+	    const { alice }			= await holochain.install(
+		"alice",
+		[
+		    {
+			"bundle": path.resolve( __dirname, "../test.happ" ),
+			"network_seed": "*",
+		    },
+		    {
+			"bundle": path.resolve( __dirname, "../test.happ" ),
+			"network_seed": "*",
+		    },
+		]
+	    );
+	} finally {
+	    await holochain.destroy();
+	}
+    });
+
     it("should install apps using every source configuration", async function () {
 	this.timeout( 60_000 );
 
@@ -90,6 +115,7 @@ function basic_tests () {
 			"bundle": {
 			    "dna1": path.resolve( __dirname, "../test.dna" ),
 			},
+			"network_seed": "*",
 		    },
 		    {
 			"app_name": "happ3",
