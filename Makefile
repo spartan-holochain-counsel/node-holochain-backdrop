@@ -21,12 +21,19 @@ node_modules:		package-lock.json
 	touch $@
 build:			node_modules
 
-use-local-holochain-client:
-	npm uninstall @whi/holochain-client
-	npm install --save ../js-holochain-client
-use-npm-holochain-client:
-	npm uninstall @whi/holochain-client
-	npm install --save @whi/holochain-client
+npm-reinstall-local:
+	cd tests; npm uninstall $(NPM_PACKAGE); npm i --save $(LOCAL_PATH)
+npm-reinstall-public:
+	cd tests; npm uninstall $(NPM_PACKAGE); npm i --save $(NPM_PACKAGE)
+npm-reinstall-dev-local:
+	cd tests; npm uninstall $(NPM_PACKAGE); npm i --save-dev $(LOCAL_PATH)
+npm-reinstall-dev-public:
+	cd tests; npm uninstall $(NPM_PACKAGE); npm i --save-dev $(NPM_PACKAGE)
+
+npm-use-admin-client-public:
+npm-use-admin-client-local:
+npm-use-admin-client-%:
+	NPM_PACKAGE=@spartan-hc/holochain-admin-client LOCAL_PATH=../../admin-client-js make npm-reinstall-$*
 
 
 #
@@ -39,14 +46,27 @@ MOCHA_OPTS		= -n enable-source-maps
 test-setup:
 	rm -rf tests/tmp/
 
-test:			build test-setup
-	$(TEST_ENV_VARS) npx mocha --recursive ./tests
+test:
+	make -s test-unit
 
-test-unit:		build test-setup
-	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit
+test-unit:
+	make -s test-unit-basic
+	make -s test-unit-cli
+	make -s test-unit-config
+	make -s test-unit-holochain
+	make -s test-unit-log-parser
 
+test-unit-basic:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_basic.js
+test-unit-cli:		build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_cli.js
+test-unit-config:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_config.js
 test-unit-holochain:	build test-setup
 	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_holochain.js
+test-unit-log-parser:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_log_parser.js
+
 
 #
 # Repository
