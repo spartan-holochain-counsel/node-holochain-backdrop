@@ -1,6 +1,6 @@
 {
   "name": "@spartan-hc/holochain-backdrop",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "A Javascript library for automating the setup of a Holochain development environment",
   "type": "module",
   "main": "lib/index.js",
