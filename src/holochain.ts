@@ -605,18 +605,20 @@ export class Holochain extends EventEmitter {
 	    "source": config.bundle,
 	};
 
-	Object.defineProperties( app_info_obj, {
-	    "app_id": {
-		get () {
-		    return this.installed_app_id;
-		},
-	    },
+	app_info_obj.app_id		= app_info_obj.installed_app_id;
+
+	const auth			= await this.admin.issueAppAuthenticationToken({
+	    "installed_app_id":		app_id,
+	    "single_use":		false,
+	    // TODO: uncomment after beta-dev.49 release
+	    // "expiry_seconds":		0,
 	});
 
 	return {
 	    "app_name": config.app_name,
 	    "network_seed": config.network_seed,
 	    "app_info": app_info_obj,
+	    "auth": auth,
 	};
     }
 
@@ -659,9 +661,13 @@ export class Holochain extends EventEmitter {
 		log.debug("Install app settings:", app_settings );
 		const install_info	= await this.installApp( name, app_settings );
 		const { app_name,
+			auth,
 			app_info }	= install_info;
 
-		installations[ name ][ app_name ]	= app_info;
+		installations[ name ][ app_name ]	= {
+		    ...app_info,
+		    auth,
+		};
 
 		Object.defineProperty( installations[ name ], i, {
 		    "value": app_info,

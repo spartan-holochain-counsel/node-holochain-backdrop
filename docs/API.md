@@ -176,22 +176,24 @@ await holochain.destroy();
 ```
 
 
-### `<Holochain>.backdrop( happs, { app_port, actors, network_seed }) -> Promise<object>`
+### `<Holochain>.install( profiles, configs, defaults ) -> Promise<object>`
 A method that will create Agent keys, register DNAs, and install Apps for each Agent.
 
-- `happs` - (*required*) an object with
-  - `key` - an `app_id_prefix` used to create app IDs combined with agent names
-  - `value` - the hApp input for install app (ie. file path, bundle, or DNA map)
-    - see [`installApp(...)`](https://github.com/spartan-holochain-counsel/js-holochain-client/blob/master/docs/API_AdminClient.md) for more details
-    - also excepts a map of role names to DNA file paths
-- Optional
-  - `app_port` - the port to attach for the app interface
-    - defaults to an available port
-  - `actors` - an array of names for agent clients
-    - defaults to `[ "alice" ]`
-  - `network_seed` - a custom network seed when installing the app
+- `profiles` - (*required*) an array of names for agent clients
+  - accepts `string` as a single profile name
+- `configs` - (*required*) a list of objects with
+  - `bundle` - (*required*) the hApp input for install app (ie. file path, bundle, or DNA map)
+  - `app_name` - (*optional*) a `string` used as the prefix for `installed_app_id`
     - defaults to a random hex
+  - `installed_app_id` - (*optional*) manually override the derived ID
+    - defaults to `${app_name}-${profile}`
+  - `network_seed` - (*optional*) manually override the seed
+    - defaults to a random hex
+  - Any additional options available for [`AdminClient.installApp( ... )`](https://github.com/spartan-holochain-counsel/holochain-admin-client-js/blob/master/docs/API.md)
+- `defaults` - (*optional*) an object with
+  - `network_seed` - (*optional*) a custom network seed when installing the app
     - specify `null` to clear default
+  - Any additional options available for [`AdminClient.installApp( ... )`](https://github.com/spartan-holochain-counsel/holochain-admin-client-js/blob/master/docs/API.md)
 
 Returns a Promise that resolves with configuration details when setup is completed.
 
@@ -201,93 +203,39 @@ let holochain = new Holochain();
 
 await holochain.start();
 
-let actors = await holochain.backdrop({
-    "happ1": "/some/path/to/happ1/file.happ",
-    "happ2": {
-        "happ2_dna1": "/some/path/to/dna/file.dna",
+const { alice }                     = await holochain.install( "alice", [
+    "../test.happ",
+    {
+        "app_name": "happ1",
+        "bundle": "../test.happ",
+        "network_seed": "*",
     },
-    "happ3": {
-        "manifest": {
-            "manifest_version": "1",
-            "name": "happ #3",
-            "roles": [{
-                "name": "happ3_dna1",
-                "dna": {
-                    "path": "/some/path/to/dna/file.dna",
-                },
-            }]
+    {
+        "app_name": "happ2",
+        "bundle": {
+            "dna1": "../test.dna",
         },
-        "resources": {},
+        "network_seed": "*",
     },
-});
-
-// Example response
-// {
-//     "alice": {
-//         "happ1": {
-//             "id": "happ1-alice",
-//             "actor": "alice",
-//             "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
-//             "client": new AgentClient(...),
-//             "source": "/some/path/to/happ1/file.happ"
-//             "cells": {
-//                 "happ1_dna1": {
-//                     "name": "happ1_dna1",
-//                     "id": [
-//                         new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                         new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN")
-//                     ],
-//                     "dna": new DnaHash("uhC0k83KXkKeWh4Lp5kZjo4efO2KFKDfxBnuJDc6o_CgA3K9ShTPs"),
-//                     "agent": new AgentPubKey("uhCAkUhoH4om32FQE7IBkSngR-eL-y7GbkmJ52RgtydvYBo8NM_cN"),
-//                 }
-//             }
-//         },
-//         "happ2": {
-//             "id": "happ2-alice",
-//             ...
-//             "source": {
-//                 "manifest": {
-//                     "manifest_version": "1",
-//                     "name": "happ2",
-//                     "roles": [{
-//                         "name": "happ2_dna1",
-//                         "dna": {
-//                             "path": "/some/path/to/dna/file.dna",
-//                         },
-//                     }]
-//                 },
-//                 "resources": {},
-//             },
-//             "cells": {
-//                 "happ2_dna1": {
-//                     "name": "happ2_dna1",
-//                     ...
-//                 }
-//             }
-//         },
-//         "happ3": {
-//             "id": "happ3-alice",
-//             ...
-//             "source": {
-//                 "manifest": {
-//                     "manifest_version": "1",
-//                     "name": "happ #3",
-//                     "roles": [{
-//                         "name": "happ3_dna1",
-//                         "dna": {
-//                             "path": "/some/path/to/dna/file.dna",
-//                         },
-//                     }]
-//                 },
-//                 "resources": {},
-//             },
-//             "cells": {
-//                 "happ3_dna1": {
-//                     "name": "happ3_dna1",
-//                     ...
-//                 }
-//             }
-//         },
-//     }
-// }
+    {
+        "app_name": "happ3",
+        "bundle": {
+            "manifest": {
+                "manifest_version": "1",
+                "name": "test",
+                "roles": [{
+                    "name": "test_dna",
+                    "dna": {
+                        "path": "../test.dna",
+                        "modifiers": {
+                            "network_seed": "1",
+                        },
+                    },
+                }]
+            },
+            "resources": {},
+        },
+        "network_seed": null,
+    },
+]);
 ```

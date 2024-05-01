@@ -1,4 +1,9 @@
 
+import {
+    AppAuthenticationTokenIssued,
+}				from '@spartan-hc/holochain-admin-client';
+
+
 export type DnaMap = Record<string, string>;
 
 export type RoleDnaConfig = Partial<{
@@ -33,10 +38,15 @@ export type InstallDefaults = {
     membrane_proofs?:		Record<string, any>;
 };
 
+export type IssuedAppAuthentication = {
+    token		: Uint8Array;
+    expired_at	       ?: number;
+};
 export type InstallResult = {
     app_name?:			string;
     network_seed:		string;
     app_info:			any;
+    auth:			AppAuthenticationTokenIssued,
 };
 
 export type CreateAppConfigInput = {
