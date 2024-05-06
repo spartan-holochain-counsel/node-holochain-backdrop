@@ -151,7 +151,7 @@ function basic_tests () {
 
 	    expect( happ0.installed_app_id	).to.have.string("alice");
 	    expect( happ0.agent_pub_key		).to.be.a("AgentPubKey");
-	    expect( happ0.status		).to.deep.equal({ running: null });
+	    expect( happ0.status		).to.deep.equal("running");
 	    expect( happ0.source		).to.be.a("string");
 
 	    const { happ1, happ2, happ3 }	= alice;
@@ -161,19 +161,19 @@ function basic_tests () {
 	    expect( happ1.app_id		).to.equal("happ1-alice");
 	    expect( happ1.installed_app_id	).to.equal("happ1-alice");
 	    expect( happ1.agent_pub_key		).to.be.a("AgentPubKey");
-	    expect( happ1.status		).to.deep.equal({ running: null });
+	    expect( happ1.status		).to.deep.equal("running");
 
 	    // log.normal("Alice 'happ2': %s", json.debug(happ2) );
 
 	    expect( happ2.app_id		).to.equal("happ2-alice");
 	    expect( happ2.agent_pub_key		).to.be.a("AgentPubKey");
-	    expect( happ2.status		).to.deep.equal({ running: null });
+	    expect( happ2.status		).to.deep.equal("running");
 
 	    // log.normal("Alice 'happ3': %s", json.debug(happ3) );
 
 	    expect( happ3.app_id		).to.equal("happ3-alice");
 	    expect( happ3.agent_pub_key		).to.be.a("AgentPubKey");
-	    expect( happ3.status		).to.deep.equal({ running: null });
+	    expect( happ3.status		).to.deep.equal("running");
 
 	    expect( happ1.agent_pub_key		).to.deep.equal( happ2.agent_pub_key );
 	    expect( happ1.agent_pub_key		).to.deep.equal( happ3.agent_pub_key );
