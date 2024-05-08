@@ -48,24 +48,29 @@ test-setup:
 
 test:
 	make -s test-unit
+	make -s test-integration
 
 test-unit:
-	make -s test-unit-basic
-	make -s test-unit-cli
 	make -s test-unit-config
-	make -s test-unit-holochain
 	make -s test-unit-log-parser
 
-test-unit-basic:	build test-setup
-	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_basic.js
-test-unit-cli:		build test-setup
-	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_cli.js
-test-unit-config:	build test-setup
+test-unit-config:		build test-setup
 	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_config.js
-test-unit-holochain:	build test-setup
-	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_holochain.js
-test-unit-log-parser:	build test-setup
+test-unit-log-parser:		build test-setup
 	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/unit/test_log_parser.js
+
+test-integration:
+	make -s test-integration-basic
+	make -s test-integration-cli
+	make -s test-integration-holochain
+
+test-integration-basic:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/integration/test_basic.js
+test-integration-cli:		build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/integration/test_cli.js
+test-integration-holochain:	build test-setup
+	$(TEST_ENV_VARS) npx mocha $(MOCHA_OPTS) ./tests/integration/test_holochain.js
+
 
 
 #
