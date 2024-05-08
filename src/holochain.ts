@@ -6,9 +6,6 @@ const log				= new Logger(
     (!__dirname.includes("/node_modules/") && process.env.LOG_LEVEL ) || 'fatal'
 );
 
-import WebSocket			from 'ws';
-global.WebSocket			= WebSocket;
-
 import fs				from 'fs';
 import YAML				from 'yaml';
 import { EventEmitter }			from 'events';
@@ -610,8 +607,7 @@ export class Holochain extends EventEmitter {
 	const auth			= await this.admin.issueAppAuthenticationToken({
 	    "installed_app_id":		app_id,
 	    "single_use":		false,
-	    // TODO: uncomment after beta-dev.49 release
-	    // "expiry_seconds":		0,
+	    "expiry_seconds":		0,
 	});
 
 	return {
