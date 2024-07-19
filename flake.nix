@@ -2,36 +2,31 @@
   description = "Holochain Development Env";
 
   inputs = {
-    nixpkgs.follows = "holochain-flake/nixpkgs";
-    flake-parts.follows = "holochain-flake/flake-parts";
-    holochain-nix-versions.url  = "github:holochain/holochain/?dir=versions/0_2";
-
-    holochain-flake = {
-      url = "github:holochain/holochain";
-      inputs.holochain.url = "github:holochain/holochain/holochain-0.4.0-dev.1";
-      inputs.lair.url = "github:holochain/lair/lair_keystore-v0.4.4";
-    };
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = inputs @ { ... }:
-    inputs.holochain-flake.inputs.flake-parts.lib.mkFlake
-      {
-        inherit inputs;
-      }
-      {
-        systems = builtins.attrNames inputs.holochain-flake.devShells;
-        perSystem =
-          { config
-          , pkgs
-          , system
-          , ...
-          }: {
-            devShells.default = pkgs.mkShell {
-              inputsFrom = [ inputs.holochain-flake.devShells.${system}.holonix ];
-              packages = with pkgs; [
-                nodejs-18_x
-              ];
-            };
-          };
+  outputs = { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+      pkgs = import ./pkgs.nix {
+        pkgs = nixpkgs.legacyPackages.${system};
+        inherit system;
       };
+    in
+    {
+      devShells.${system} = {
+        default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            holochain_0-4
+            lair-keystore_0-4-5
+
+            nodejs_22
+          ];
+
+          shellHook = ''
+            export PS1="\[\e[1;32m\](flake-env)\[\e[0m\] \[\e[1;34m\]\u@\h:\w\[\e[0m\]$ "
+          '';
+        };
+      };
+    };
 }

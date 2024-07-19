@@ -200,7 +200,6 @@ export async function main ( args, callback ) {
 }
 
 if ( typeof process?.mainModule?.filename !== "string" ) {
-    log.normal("Running as CLI interface");
     main( process.argv )
 	.catch( console.error );
 }
