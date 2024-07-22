@@ -1,5 +1,7 @@
 [back to README.md](README.md)
 
+[![](https://img.shields.io/github/actions/workflow/status/spartan-holochain-counsel/node-holochain-backdrop/all-tests.yml?branch=master&style=flat-square&label=master)](https://github.com/spartan-holochain-counsel/node-holochain-backdrop/actions/workflows/all-tests.yml?query=branch%3Amaster)
+
 # Contributing
 
 ## Overview
