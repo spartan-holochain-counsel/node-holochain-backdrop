@@ -18,7 +18,7 @@
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
             holochain_0-4
-            lair-keystore_0-4-5
+            lair-keystore_0-5
 
             nodejs_22
           ];

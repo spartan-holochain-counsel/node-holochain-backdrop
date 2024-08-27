@@ -54,6 +54,11 @@ export async function generate (
 	    "connection_url": "**will be replaced at runtime**",
 	    "danger_passphrase_insecure_from_config": "",
 	},
+        "dpki": {
+            "dna_path": null,
+            "device_seed_lair_tag": "disabled",
+            "no_dpki": true,
+        },
 	"admin_interfaces": [{
 	    "driver": {
 		"type": "websocket",
