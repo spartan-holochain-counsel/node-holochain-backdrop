@@ -58,6 +58,7 @@ export type CreateAppConfigInput = {
 export type HolochainDefaults = {
     lair_log?:			string;
     conductor_log?:		string;
+    wasm_log?:			string;
     default_loggers?:		boolean;
     default_stdout_loggers?:	boolean;
     default_stderr_loggers?:	boolean;
@@ -69,6 +70,7 @@ export type HolochainDefaults = {
 export type HolochainOptions = {
     lair_log:			string;
     conductor_log:		string;
+    wasm_log:			string;
     default_loggers:		boolean;
     default_stdout_loggers:	boolean;
     default_stderr_loggers:	boolean;

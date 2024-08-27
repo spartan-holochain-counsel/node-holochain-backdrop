@@ -58,6 +58,7 @@ export class Holochain extends EventEmitter {
 	return {
 	    "lair_log":			process.env.LAIR_LOG || DEFAULT_LAIR_LOG,
 	    "conductor_log":		process.env.CONDUCTOR_LOG || DEFAULT_COND_LOG,
+	    "wasm_log":			process.env.WASM_LOG || "debug",
 	    "default_loggers":		false,
 	    "default_stdout_loggers":	false,
 	    "default_stderr_loggers":	false,
@@ -155,7 +156,6 @@ export class Holochain extends EventEmitter {
     async #setup () : Promise<string> {
 	if ( this.config_file )
 	    throw new Error(`Already setup @ ${this.config_file}`);
-
 
 	log.trace("Setup using options: %s", this.options );
 	if ( this.options.config ) {
@@ -313,6 +313,7 @@ export class Holochain extends EventEmitter {
 		"command": [ "holochain", "-p", "-c", this.config_file ],
 		"x_env": {
 		    "RUST_LOG": this.options.conductor_log,
+		    "WASM_LOG": this.options.wasm_log,
 		},
 	    });
 
@@ -402,8 +403,13 @@ export class Holochain extends EventEmitter {
     }
 
     async destroy ( exit_code : number = Infinity ) : Promise<void> {
-	log.debug("Destroying Holochain because of %s", exit_code );
+        try {
+            await this.setup();
+        } catch (e) {
+            // Ignore failures
+        }
 
+	log.debug("Destroying Holochain because of %s", exit_code );
 	if ( this.#destroyed === true )
 	    return;
 

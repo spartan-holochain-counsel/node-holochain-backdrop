@@ -87,21 +87,7 @@ export function parse_line ( source ) {
 	date				= new Date( text.slice(0, 27) );
 	level				= text.slice( 28, 33 ).toLowerCase().trim();
 
-	if ( msg.startsWith("wasm_trace") ) {
-	    // (\S+)       (\S+)                                     ([0-9]+)
-	    // |           |                                         |  (.*)
-	    // |           |                                         |  |
-	    // wasm_trace: mere_memory_api::handlers:src/handlers.rs:32 Creating entries for remembering (3000000 bytes)
-	    const matches		= msg.match(/(\S+): (\S+):([0-9]+) (.*)/);
-
-	    type			= "wasm-trace";
-	    level			= "normal";
-	    group			= matches[1];	// wasm_trace
-	    location			= matches[2];	// mere_memory_api::handlers:src/handlers.rs
-	    line_number			= matches[3];	// 32
-	    message			= matches[4];	// Creating entries for remembering (3000000 bytes)
-	}
-	else if ( msg.startsWith("publish_dht_ops_workflow") ) {
+	if ( msg.startsWith("publish_dht_ops_workflow") ) {
 	    // (\S+)                                                                                               (\S+)                                                (\S+)                                                          ([0-9]+)
 	    // |                                                                                                   |                                                    |                                                              |   (.*)
 	    // |                                                                                                   |                                                    |                                                              |   |
@@ -133,13 +119,27 @@ export function parse_line ( source ) {
 		line_number		= matches[3];	// 96
 		message			= matches[4];	// Conductor successfully initialized.
 	    }
+            else {
+	        const matches           = msg.match(/(\S+):([0-9]+) (.*)/);
+
+                if ( matches ) {
+	            type		= "wasm-trace";
+	            level		= "normal";
+	            group		= "wasm_trace";
+	            location		= matches[1];	// mere_memory_api::handlers:src/handlers.rs
+	            line_number		= matches[2];	// 32
+	            message		= matches[3];	// Creating entries for remembering (3000000 bytes)
+                } else {
+                    message             = msg;
+                }
+            }
 	}
     }
 
     const context			= group
 	  ? `(${eclipse_right(group, 22)}) ${column_eclipse_left(location, 45-(Math.min(group.length, 22)))}`
 	  : `${column_eclipse_left(location, 48)}`;
-    const message_color			= type === "wasm_trace" ? "\x1b[37m" : "\x1b[0m";
+    const message_color			= type === "wasm-trace" ? "\x1b[37m" : "\x1b[0m";
 
     let formatted;
     try {
