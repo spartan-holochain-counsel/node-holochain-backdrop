@@ -56,7 +56,8 @@ export async function generate (
 	},
         "dpki": {
             "dna_path": null,
-            "device_seed_lair_tag": "disabled",
+            "network_seed": "",
+            "allow_throwaway_random_dpki_agent_key": false,
             "no_dpki": true,
         },
 	"admin_interfaces": [{
